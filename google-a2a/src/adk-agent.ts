@@ -11,7 +11,6 @@ import {
     LlmAgent,
     FunctionTool,
     InMemoryRunner,
-    stringifyContent,
 } from "@google/adk";
 import { createUserContent, type Content } from "@google/genai";
 import { z } from "zod";
@@ -34,6 +33,7 @@ const sdk = createClient({
 });
 
 // ── 1Claw FunctionTools ──────────────────────────────────────────────
+// ADK FunctionTool expects zod/v3 or zod/v4; we assert options for compatibility across Zod versions.
 
 const listSecretsTool = new FunctionTool({
     name: "list_secrets",
@@ -53,7 +53,8 @@ const listSecretsTool = new FunctionTool({
             })),
         };
     },
-});
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+} as any);
 
 const getSecretTool = new FunctionTool({
     name: "get_secret",
@@ -66,7 +67,8 @@ const getSecretTool = new FunctionTool({
                 'The secret path (e.g. "db/password", "keys/api-key")',
             ),
     }),
-    execute: async ({ path }) => {
+    execute: async (input: unknown) => {
+        const { path } = input as { path: string };
         const res = await sdk.secrets.get(VAULT_ID!, path);
         if (res.error) return { status: "error", error: res.error.message };
         return {
@@ -77,7 +79,8 @@ const getSecretTool = new FunctionTool({
             version: res.data!.version,
         };
     },
-});
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+} as any);
 
 const putSecretTool = new FunctionTool({
     name: "put_secret",
@@ -92,7 +95,12 @@ const putSecretTool = new FunctionTool({
                 "Secret type: api_key, password, private_key, env_bundle, note",
             ),
     }),
-    execute: async ({ path, value, type }) => {
+    execute: async (input: unknown) => {
+        const { path, value, type } = input as {
+            path: string;
+            value: string;
+            type: string;
+        };
         const res = await sdk.secrets.set(VAULT_ID!, path, value, { type });
         if (res.error) return { status: "error", error: res.error.message };
         return {
@@ -101,7 +109,8 @@ const putSecretTool = new FunctionTool({
             version: res.data!.version,
         };
     },
-});
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+} as any);
 
 // ── ADK Agent ────────────────────────────────────────────────────────
 

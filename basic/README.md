@@ -16,7 +16,7 @@ Three TypeScript scripts that walk through the core 1Claw workflows: vault CRUD,
 
 - Node.js 20+
 - A [1Claw account](https://1claw.xyz) with an API key (get one at **Settings → API Keys**)
-- Build the SDK first: `cd packages/sdk && npm run build && cd ../..`
+- Uses `@1claw/sdk@^0.8.0` (npm install will fetch it)
 
 ## Demo walkthrough (5 min)
 

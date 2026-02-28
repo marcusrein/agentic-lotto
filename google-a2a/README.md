@@ -24,7 +24,7 @@ Three demos showing AI agents communicating via [Google's A2A protocol](https://
 - Node.js 20+
 - A [1Claw account](https://1claw.xyz) with a vault containing at least one secret
 - For the ADK demo: a [Gemini API key](https://aistudio.google.com/apikey)
-- Build the SDK first: `cd packages/sdk && npm run build && cd ../..`
+- Uses `@1claw/sdk@^0.8.0` (npm install will fetch it)
 
 ---
 

@@ -16,7 +16,7 @@ A Next.js chat app where an AI agent (Claude via Vercel AI SDK) accesses secrets
 - Node.js 20+
 - A [1Claw account](https://1claw.xyz) with a vault and at least one secret
 - An [Anthropic API key](https://console.anthropic.com/) for Claude
-- Build the SDK first: `cd packages/sdk && npm run build && cd ../..`
+- Uses `@1claw/sdk@^0.8.0` (npm install will fetch it)
 
 ## Demo walkthrough (5 min)
 

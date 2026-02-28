@@ -45,16 +45,13 @@ Add `GOOGLE_API_KEY` or `OPENAI_API_KEY` for langchain-agent, `ANTHROPIC_API_KEY
 Every example follows the same pattern:
 
 ```bash
-# 1. Build the SDK (required once)
-cd packages/sdk && npm run build && cd ../..
-
-# 2. Set up the example
+# 1. Set up the example (uses published @1claw/sdk@^0.8.0)
 cd examples/<name>
 npm install
 cp .env.example .env     # or .env.local.example → .env.local for Next.js
 # Fill in your credentials
 
-# 3. Run it
+# 2. Run it
 npm start
 ```
 

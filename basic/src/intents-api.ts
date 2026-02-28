@@ -12,7 +12,7 @@
  *   - A vault with a stored signing key (e.g. "keys/base-signer")
  */
 
-import { createClient } from "@1claw/sdk";
+import { createClient, type AgentCreatedResponse } from "@1claw/sdk";
 
 const BASE_URL = process.env.ONECLAW_BASE_URL ?? "https://api.1claw.xyz";
 const API_KEY = process.env.ONECLAW_API_KEY;
@@ -96,15 +96,14 @@ async function main() {
         scopes: ["vault:read", "tx:sign"],
         intents_api_enabled: true,
     });
-    let agent: { agent: { id: string }; api_key: string } | null = null;
+    let agent: AgentCreatedResponse | null = agentRes.data ?? null;
     if (agentRes.error) {
         console.error("Failed:", agentRes.error.message);
         // Fall through to cleanup
-    } else {
-        agent = agentRes.data!;
+    } else if (agent) {
         console.log(`Agent: ${agent.agent.name} (${agent.agent.id})`);
         console.log(`  intents_api_enabled: ${agent.agent.intents_api_enabled}`);
-        console.log(`  API key: ${agent.api_key.slice(0, 12)}...`);
+        if (agent.api_key) console.log(`  API key: ${agent.api_key.slice(0, 12)}...`);
     }
 
     if (agent) {

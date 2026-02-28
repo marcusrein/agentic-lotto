@@ -15,7 +15,7 @@ A LangChain agent that fetches secrets from a 1Claw vault on demand. The LLM dec
 - Node.js 20+
 - A [1Claw account](https://1claw.xyz) with a vault containing at least one secret
 - An LLM API key: **OpenAI** (`OPENAI_API_KEY`) or **Gemini free tier** ([aistudio.google.com/apikey](https://aistudio.google.com/apikey))
-- Build the SDK first: `cd packages/sdk && npm run build && cd ../..`
+- Uses `@1claw/sdk@^0.8.0` (npm install will fetch it)
 
 ## Demo walkthrough (5 min)
 
