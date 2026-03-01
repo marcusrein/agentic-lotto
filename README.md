@@ -2,7 +2,7 @@
 
 > **Reference only** — these examples are for educational and demo purposes. They are not production-ready and may contain hardcoded values, skip error handling, or use development-only configurations. Always review and adapt for your own security requirements.
 
-Seven example applications demonstrating the [1Claw](https://1claw.xyz) SDK, API, and MCP server in agentic workflows. Each is self-contained with a step-by-step walkthrough you can run in 5–10 minutes.
+Eight example applications demonstrating the [1Claw](https://1claw.xyz) SDK, API, and MCP server in agentic workflows. Each is self-contained with a step-by-step walkthrough you can run in 5–10 minutes.
 
 ## Quick reference
 
@@ -14,6 +14,7 @@ Seven example applications demonstrating the [1Claw](https://1claw.xyz) SDK, API
 | [nextjs-agent-secret](./nextjs-agent-secret/) | Intermediate | 5 min | AI chat app (Claude) accesses vault secrets with approval gates |
 | [google-a2a](./google-a2a/) | Intermediate | 10 min | Two agents communicate via Google A2A protocol + 1Claw vaults (includes ADK demo) |
 | [tx-simulation](./tx-simulation/) | Intermediate | 10 min | AI agent signs on-chain transactions with guardrails and Tenderly simulation |
+| [shroud-demo](./shroud-demo/) | Intermediate | 5 min | Shroud TEE proxy: health, agent auth, Intents API, LLM proxy (key from Vault or header) |
 | [ampersend-x402](./ampersend-x402/) | Advanced | 10 min | x402 micropayments via Ampersend — MCP/HTTP clients, hybrid billing, paywall server |
 
 ## Getting started
@@ -65,7 +66,8 @@ If you're new to 1Claw, walk through the examples in this order:
 4. **[nextjs-agent-secret](./nextjs-agent-secret/)** — Full chat app with server-side secret handling
 5. **[google-a2a](./google-a2a/)** — Multi-agent communication with vault credentials
 6. **[tx-simulation](./tx-simulation/)** — On-chain transactions with guardrails and simulation
-7. **[ampersend-x402](./ampersend-x402/)** — Payments and billing integration
+7. **[shroud-demo](./shroud-demo/)** — Shroud TEE proxy: health, Intents API, LLM proxy (no LLM key required if stored in Vault)
+8. **[ampersend-x402](./ampersend-x402/)** — Payments and billing integration
 
 ## What you need
 
@@ -75,7 +77,8 @@ If you're new to 1Claw, walk through the examples in this order:
 | 1Claw vault + secrets | [1claw.xyz](https://1claw.xyz) dashboard | All except basic (creates its own) |
 | Gemini API key | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) (free) | langchain, google-a2a, tx-simulation |
 | Anthropic API key | [console.anthropic.com](https://console.anthropic.com) | nextjs-agent-secret |
-| OpenAI API key | [platform.openai.com](https://platform.openai.com) | langchain (alternative to Gemini) |
+| OpenAI API key | [platform.openai.com](https://platform.openai.com) | langchain (alternative to Gemini); shroud-demo LLM proxy (optional if key in Vault) |
+| 1Claw agent (ID + API key) | [1claw.xyz](https://1claw.xyz) — create agent, enable Intents API | shroud-demo, tx-simulation |
 | Smart account + session key | [Ampersend docs](https://docs.ampersend.ai) | ampersend-x402 |
 
 ## About 1Claw
