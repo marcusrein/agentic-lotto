@@ -78,9 +78,9 @@ async function main() {
             method: "POST",
             url: `${BASE_URL}/v1/agents/${AGENT_ID}/transactions/simulate`,
             body: JSON.stringify({
-                chain_id: 8453,
+                chain: "base",
                 to: "0x0000000000000000000000000000000000000000",
-                value_wei: "0",
+                value: "0",
                 data: "0x",
             }),
         });

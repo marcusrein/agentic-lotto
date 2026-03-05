@@ -64,7 +64,7 @@ Create an agent in the [1Claw dashboard](https://1claw.xyz) (Agents → Create),
 | `npm run intents` | `src/intents.ts`    | Agent token + Shroud Intents API               |
 | `npm run llm-proxy` | `src/llm-proxy.ts` | One OpenAI request via Shroud (test)           |
 | `npm run real-llm`  | `src/real-llm.ts`  | One real LLM query via Shroud → OpenAI         |
-| `npm run real-tx`   | `src/real-tx.ts`   | One minimal real tx (0 value, Sepolia)         |
+| `npm run real-tx`   | `src/real-tx.ts`   | One minimal real tx (0 value, Base)             |
 
 ## Environment variables
 
@@ -112,13 +112,13 @@ Without agent credentials, Intents and LLM steps are skipped.
 
 ## Running a real transaction
 
-1. Ensure your **agent** has **Intents API enabled** and a **signing key** in the vault at `keys/sepolia-signer` (or another chain your agent is allowed to use), with a **policy** granting the agent **read** on `keys/**`.
+1. Ensure your **agent** has **Intents API enabled** and a **signing key** in the vault at `keys/base-signer` (or another chain your agent is allowed to use), with a **policy** granting the agent **read** on `keys/**`.
 2. **Shroud** must be able to reach the **Vault** (if you get 401, fix Shroud↔Vault connectivity).
 3. Run:
    ```bash
    npm run real-tx
    ```
-   This submits a **minimal real transaction**: 0 value to the burn address on Sepolia (no funds at risk). You’ll get a transaction ID or tx hash if signing and broadcast succeed.
+   This submits a **minimal real transaction**: 0 value to the burn address on Base (no funds at risk). You’ll get a transaction ID or tx hash if signing and broadcast succeed.
 
 ## Next steps
 
