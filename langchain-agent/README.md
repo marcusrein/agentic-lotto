@@ -4,6 +4,16 @@
 
 A LangChain agent that fetches secrets from a 1Claw vault on demand. The LLM decides when to call vault tools — listing secrets and retrieving them just-in-time. Supports **OpenAI** or **Gemini** (free tier).
 
+## Quick start
+
+```bash
+cd examples/langchain-agent
+npm install
+cp .env.example .env
+# Edit .env: set ONECLAW_API_KEY, ONECLAW_VAULT_ID, and GOOGLE_API_KEY (or OPENAI_API_KEY)
+npm start
+```
+
 ## What you'll learn
 
 - Define custom LangChain tools that wrap the `@1claw/sdk`
@@ -23,7 +33,7 @@ A LangChain agent that fetches secrets from a 1Claw vault on demand. The LLM dec
 
 ```bash
 cd examples/langchain-agent
-npm install --legacy-peer-deps
+npm install
 cp .env.example .env
 ```
 

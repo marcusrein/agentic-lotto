@@ -35,6 +35,23 @@ When the agent hits a **402 Payment Required**, Ampersend's treasurer authorizes
 - For the paywall demo: [Coinbase CDP credentials](https://portal.cdp.coinbase.com/)
 - Uses `@1claw/sdk@^0.8.0` (npm install will fetch it)
 
+## Quick start (MCP + x402)
+
+**Option A — Session key in `.env`:** Set `BUYER_PRIVATE_KEY` and `SMART_ACCOUNT_ADDRESS` in `.env`.
+
+**Option B — Session key in 1Claw vault:** Leave `BUYER_PRIVATE_KEY` unset and store the key in your vault at `keys/x402-session-key`. The demo fetches it at runtime.
+
+```bash
+cd examples/ampersend-x402
+npm install
+cp .env.example .env
+# Edit .env: set ONECLAW_API_KEY, ONECLAW_VAULT_ID, ONECLAW_AGENT_ID, and SMART_ACCOUNT_ADDRESS
+# For Option A only: set BUYER_PRIVATE_KEY
+npm start
+```
+
+This runs the MCP client demo: connects to 1Claw MCP, lists secrets, writes a test secret, and cleans up. If over quota, x402 payment is handled automatically (Option A or B).
+
 ## Demo walkthrough (10 min)
 
 ### Step 1 — Install and configure

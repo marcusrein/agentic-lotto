@@ -4,6 +4,17 @@
 
 A custom MCP server built with [FastMCP](https://github.com/punkpeye/fastmcp) that wraps the `@1claw/sdk` into higher-level, domain-specific tools. Instead of raw vault CRUD, agents get business-logic operations like **rotate an API key**, **deploy a service**, and **parse an env config** — all backed by 1Claw.
 
+## Quick start
+
+```bash
+cd examples/fastmcp-tool-server
+npm install
+cp .env.example .env
+# Edit .env: set ONECLAW_API_KEY, ONECLAW_VAULT_ID, and (optional) ONECLAW_AGENT_ID
+npm start
+# Or for HTTP mode: MCP_TRANSPORT=httpStream PORT=3001 npm start
+```
+
 ## What you'll learn
 
 - Build an MCP server that composes SDK calls into domain tools

@@ -130,8 +130,8 @@ else
 fi
 echo ""
 
-# --- 9. langchain-agent (last: can be slow / hang on LLM calls) ---
-echo "[9/9] langchain-agent"
+# --- 9. langchain-agent (slow: 45s + LLM calls) ---
+echo "[9/10] langchain-agent"
 if [ "$SKIP" != "1" ]; then (cd "$EXAMPLES_ROOT/langchain-agent" && npm install --silent); fi
 LANGCHAIN_OUT=$(mktemp 2>/dev/null || echo /tmp/langchain-out.$$)
 (cd "$EXAMPLES_ROOT/langchain-agent" && npm start > "$LANGCHAIN_OUT" 2>&1) & lpid=$!
@@ -153,6 +153,18 @@ elif echo "$out" | grep -qi "error\|failed"; then
 else
   echo "  ○ langchain-agent skipped (timeout or no LLM key)"
   ((PASS++)) || true
+fi
+echo ""
+
+# --- 10. shroud-security ---
+echo "[10/10] shroud-security"
+if [ "$SKIP" != "1" ]; then (cd "$EXAMPLES_ROOT/shroud-security" && npm install --silent); fi
+if (cd "$EXAMPLES_ROOT/shroud-security" && npx tsc --noEmit 2>&1); then
+  echo "  ✓ shroud-security (typecheck passed)"
+  ((PASS++)) || true
+else
+  echo "  ✗ shroud-security typecheck failed"
+  ((FAIL++)) || true
 fi
 echo ""
 

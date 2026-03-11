@@ -4,6 +4,18 @@
 
 Three demos showing AI agents communicating via [Google's A2A protocol](https://google.github.io/A2A/), using 1Claw as the secure credential layer. A coordinator agent discovers a worker agent, sends it tasks, and the worker fetches secrets from a 1Claw vault to complete them.
 
+## Quick start (Demo 1 — Vault Worker)
+
+```bash
+cd examples/google-a2a
+npm install
+cp .env.example .env
+# Edit .env: set ONECLAW_API_KEY and ONECLAW_VAULT_ID
+npm start
+```
+
+The worker starts on port 4100; the coordinator discovers it and sends a "list secrets" task. You should see task completion and artifact output in the terminal.
+
 ## What you'll learn
 
 - Implement the A2A protocol (Agent Card discovery, JSON-RPC task handling)

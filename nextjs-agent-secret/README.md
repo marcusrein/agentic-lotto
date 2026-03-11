@@ -4,6 +4,17 @@
 
 A Next.js chat app where an AI agent (Claude via Vercel AI SDK) accesses secrets stored in a 1Claw vault. Secrets are fetched server-side and **never exposed to the browser or the model's response stream**. Gated secrets trigger a human approval flow.
 
+## Quick start
+
+```bash
+cd examples/nextjs-agent-secret
+npm install
+cp .env.local.example .env.local
+# Edit .env.local: set ONECLAW_API_KEY (https://1claw.xyz/settings/api-keys) and ANTHROPIC_API_KEY
+npm run dev
+# Open http://localhost:3000
+```
+
 ## What you'll learn
 
 - Integrate the `@1claw/sdk` with the Vercel AI SDK as server-side tools
@@ -28,13 +39,14 @@ npm install
 cp .env.local.example .env.local
 ```
 
-Open `.env.local` and fill in your credentials:
+Open `.env.local` and set:
 
-```env
-ONECLAW_API_KEY=ocv_your_key_here
-ONECLAW_BASE_URL=https://api.1claw.xyz
-ANTHROPIC_API_KEY=sk-ant-your-key-here
-```
+| Variable | Where to get it |
+|----------|-----------------|
+| `ONECLAW_API_KEY` | [1claw.xyz → Settings → API Keys](https://1claw.xyz/settings/api-keys) |
+| `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com/) |
+
+Optional: `ONECLAW_BASE_URL` (default: `https://api.1claw.xyz`).
 
 ### Step 2 — Make sure you have a secret
 

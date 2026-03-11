@@ -19,19 +19,21 @@ This example creates an agent with custom `shroud_config` and sends test prompts
 
 - Node.js 20+
 - A [1Claw](https://1claw.xyz) account (for setup)
-- OpenAI API key (for LLM proxy tests)
+- OpenAI API key (optional; only needed for LLM proxy tests)
 
-## Quick Start
+## Quick start
 
 ```bash
 cd examples/shroud-security
 npm install
 cp .env.example .env
-# Edit .env: set ONECLAW_API_KEY (your user key from https://1claw.xyz/settings/api-keys)
-# Edit .env: set OPENAI_API_KEY (for LLM proxy tests)
-npm run setup    # creates agent with threat detection enabled
-npm start        # runs all filter tests
+# Edit .env: set ONECLAW_API_KEY (from https://1claw.xyz/settings/api-keys)
+# Optional: set OPENAI_API_KEY for LLM proxy tests
+npm run setup    # creates agent with threat detection config, writes ONECLAW_AGENT_ID and ONECLAW_AGENT_API_KEY to .env
+npm start        # runs all filter tests (Unicode, injection, social, encoding, network, filesystem)
 ```
+
+To run a single filter test: `npm run test-unicode`, `npm run test-injection`, etc.
 
 ## Scripts
 

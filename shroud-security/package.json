@@ -16,7 +16,7 @@
     "test-filesystem": "npx tsx src/test-filesystem.ts"
   },
   "dependencies": {
-    "@1claw/sdk": "workspace:*",
+    "@1claw/sdk": "^0.13.0",
     "dotenv": "^16.4.5"
   },
   "devDependencies": {

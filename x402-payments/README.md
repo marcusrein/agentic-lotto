@@ -2,6 +2,21 @@
 
 This example demonstrates **real x402 micropayments** against the 1Claw API. When your org is over the free-tier quota (or you have no auth), payable endpoints return `402 Payment Required`. This script uses an EOA private key from `.env` to sign payments and retry, so you can call every x402-capable endpoint with automatic payment.
 
+## Quick start
+
+```bash
+cd examples/x402-payments
+npm install
+cp .env.example .env
+# Edit .env:
+#   ONECLAW_API_KEY, ONECLAW_VAULT_ID (from https://1claw.xyz)
+#   X402_PRIVATE_KEY=0x... (generate with: node -e "console.log('0x'+require('crypto').randomBytes(32).toString('hex'))")
+# For real payments: fund the wallet with USDC on Base (chain 8453)
+npm start
+```
+
+The script authenticates with 1Claw, then calls get/put secret, audit, and optionally simulate. If the API returns 402, it signs the payment and retries with the `X-PAYMENT` header.
+
 ## x402-capable endpoints (1Claw)
 
 | Method | Path                                                 | Description          |
@@ -15,33 +30,13 @@ This example demonstrates **real x402 micropayments** against the 1Claw API. Whe
 | POST   | `/v1/agents/{agent_id}/transactions/simulate`        | Simulate transaction |
 | POST   | `/v1/agents/{agent_id}/transactions/simulate-bundle` | Simulate bundle      |
 
-## Setup
+## Setup (detailed)
 
-1. **Copy env and set 1Claw credentials**
+1. **Copy env and set 1Claw credentials:** `ONECLAW_API_KEY`, `ONECLAW_VAULT_ID`. Optional: `ONECLAW_AGENT_ID` for Intents demos.
 
-    ```bash
-    cp .env.example .env
-    # Set ONECLAW_API_KEY, ONECLAW_VAULT_ID (and ONECLAW_AGENT_ID for Intents demos)
-    ```
+2. **Generate an EOA key for x402:** Run `node -e "console.log('0x'+require('crypto').randomBytes(32).toString('hex'))"` and set `X402_PRIVATE_KEY=0x...` in `.env`. For **real** payments when over quota, this wallet must hold **USDC on Base** (chain ID 8453); 1Claw uses the Coinbase CDP x402 facilitator.
 
-2. **Generate a key for x402 payments and add to `.env`**
-
-    Generate a new EOA private key (hex, 32 bytes):
-
-    ```bash
-    node -e "console.log('0x' + require('crypto').randomBytes(32).toString('hex'))"
-    ```
-
-    Put the result in `.env` as `X402_PRIVATE_KEY=0x...`.
-
-    For **real** payments when over quota, this wallet must hold **USDC on Base** (chain ID 8453). The 1Claw API uses the Coinbase CDP x402 facilitator; payments are in USDC on Base.
-
-3. **Install and run**
-
-    ```bash
-    npm install
-    npm start
-    ```
+3. **Install and run:** `npm install` then `npm start`.
 
 ## What the script does
 
@@ -64,6 +59,16 @@ No `X402_PRIVATE_KEY` needed; it only performs GET requests and prints status co
 
 - **GET /v1/share/{share_id}**: Add `ONECLAW_SHARE_ID` to `.env` to include this in the demo.
 - **Agent endpoints**: Set `ONECLAW_AGENT_ID` to include transaction simulate in the demo.
+
+## Environment variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ONECLAW_API_KEY` | Yes | 1Claw API key from [1claw.xyz/settings/api-keys](https://1claw.xyz/settings/api-keys) |
+| `ONECLAW_VAULT_ID` | Yes | Vault UUID from the [dashboard](https://1claw.xyz) |
+| `X402_PRIVATE_KEY` | For payment | EOA private key (hex). Must hold USDC on Base for real payments. |
+| `ONECLAW_AGENT_ID` | Optional | For transaction simulate in the demo |
+| `ONECLAW_BASE_URL` | No | Default: `https://api.1claw.xyz` |
 
 ## References
 

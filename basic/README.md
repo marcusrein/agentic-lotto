@@ -4,6 +4,16 @@
 
 Three TypeScript scripts that walk through the core 1Claw workflows: vault CRUD, secrets management, billing, user signup with sharing, and the Intents API.
 
+## Quick start
+
+```bash
+cd examples/basic
+npm install
+cp .env.example .env
+# Edit .env: set ONECLAW_API_KEY (from https://1claw.xyz/settings/api-keys)
+npm start
+```
+
 ## What you'll learn
 
 - Authenticate with the 1Claw SDK (API key or agent token)
@@ -123,7 +133,7 @@ This runs `src/intents-api.ts`, which:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `ONECLAW_API_KEY` | Yes* | Your API key (`ocv_...`). Not needed for signup script. |
+| `ONECLAW_API_KEY` | Yes* | Your API key (`ocv_...`). Get one at [1claw.xyz → Settings → API Keys](https://1claw.xyz/settings/api-keys). Not needed for signup script. |
 | `ONECLAW_BASE_URL` | No | API URL (default: `https://api.1claw.xyz`) |
 | `ONECLAW_AGENT_ID` | No | Agent UUID. When set, `npm start` authenticates as an agent. |
 

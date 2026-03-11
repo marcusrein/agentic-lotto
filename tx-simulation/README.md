@@ -4,6 +4,18 @@
 
 An interactive AI chat app showcasing **1Claw's Intents API with guardrails**. A Gemini-powered agent can sign and broadcast real on-chain transactions — but only within security boundaries configured by a human. Transactions can be simulated via Tenderly before committing real funds.
 
+## Quick start
+
+```bash
+cd examples/tx-simulation
+npm install
+cp .env.example .env
+# Edit .env: set ONECLAW_AGENT_ID, ONECLAW_AGENT_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY
+# Prerequisite: create an agent with Intents API enabled and a signing key in the vault (see Step 2 below)
+npm run dev
+# Open http://localhost:3000
+```
+
 ## What you'll learn
 
 - How 1Claw's transaction guardrails block unauthorized transactions before signing

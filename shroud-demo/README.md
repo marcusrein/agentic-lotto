@@ -36,18 +36,17 @@ So you can use Shroud for LLM traffic without “bringing” a key in code if it
 - **For Intents API:** A [1Claw](https://1claw.xyz) agent with `ONECLAW_AGENT_ID` and `ONECLAW_AGENT_API_KEY` (Intents API enabled if you want real signing).
 - **For LLM proxy:** Either store the provider key in the Vault at `providers/openai/api-key` with agent read access, or set `OPENAI_API_KEY` in `.env`.
 
-## Quick start
+## Quick start (recommended)
 
-**Option A — One-time setup (recommended)**  
-Put your **user** API key in `.env`, then create an agent and write agent credentials to `.env`:
+**One-time setup:** Put your **user** API key in `.env`, then run setup to create an agent and write agent credentials to `.env`:
 
 ```bash
 cd examples/shroud-demo
 npm install
 cp .env.example .env
-# Edit .env: set ONECLAW_API_KEY (your user key from https://1claw.xyz/settings/api-keys)
+# Edit .env: set ONECLAW_API_KEY (from https://1claw.xyz/settings/api-keys)
 npm run setup    # creates agent, writes ONECLAW_AGENT_ID and ONECLAW_AGENT_API_KEY to .env
-npm start
+npm start        # runs health, Intents API, and optional LLM proxy checks
 ```
 
 **Option B — Manual**  
