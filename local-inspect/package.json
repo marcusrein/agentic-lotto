@@ -1,0 +1,25 @@
+{
+  "name": "@1claw/example-local-inspect",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Detect prompt injection, PII, and threats in LLM output — no account needed",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "start": "npx tsx src/index.ts",
+    "test-injection": "npx tsx src/test-injection.ts",
+    "test-social": "npx tsx src/test-social.ts",
+    "test-pii": "npx tsx src/test-pii.ts",
+    "test-encoding": "npx tsx src/test-encoding.ts",
+    "test-network": "npx tsx src/test-network.ts",
+    "test-clean": "npx tsx src/test-clean.ts"
+  },
+  "dependencies": {
+    "@1claw/mcp": "^0.14.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
