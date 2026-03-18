@@ -15,7 +15,7 @@
     "real-tx": "npx tsx --env-file=.env src/real-tx.ts"
   },
   "dependencies": {
-    "@1claw/sdk": "^0.9.0"
+    "@1claw/sdk": "^0.15.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

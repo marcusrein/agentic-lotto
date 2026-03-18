@@ -15,7 +15,7 @@
         "client": "npx tsx --env-file=.env src/x402-client.ts"
     },
     "dependencies": {
-        "@1claw/sdk": "^0.8.0",
+        "@1claw/sdk": "^0.15.0",
         "@ampersend_ai/ampersend-sdk": "^0.0.7",
         "@x402/core": "^2.1.0",
         "@x402/evm": "^2.4.0",

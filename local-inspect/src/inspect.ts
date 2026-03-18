@@ -7,8 +7,7 @@ import {
   inspectOutput,
   normalizeUnicode,
   type ThreatDetection,
-  // @ts-expect-error — subpath import; exports field added in next release
-} from "@1claw/mcp/dist/security/index.js";
+} from "@1claw/mcp/security";
 
 export interface InspectResult {
   verdict: string;
