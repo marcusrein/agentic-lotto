@@ -20,6 +20,10 @@ Shroud runs inside a **Trusted Execution Environment** (AMD SEV-SNP on Confident
 
 So you can use Shroud for LLM traffic without “bringing” a key in code if it’s already in the Vault.
 
+### LLM token billing (Stripe AI Gateway)
+
+If your **organization** has opted into LLM token billing in the dashboard (**Settings → Billing**), the Vault issues JWTs with Stripe customer metadata and Shroud may route eligible traffic through the **Stripe AI Gateway** for metered billing. That path is server-side configuration (org setting + `STRIPE_SECRET_KEY` on Shroud); this demo does not configure it. Use normal provider keys or Vault-stored keys as above unless your operator has enabled the add-on.
+
 ## What you’ll run
 
 | Step             | What it does                                                                           |

@@ -51,7 +51,7 @@ Add `GOOGLE_API_KEY` or `OPENAI_API_KEY` for langchain-agent, `ANTHROPIC_API_KEY
 Every example follows the same pattern:
 
 ```bash
-# 1. Set up the example (uses published @1claw/sdk@^0.12.0)
+# 1. Set up the example (uses published @1claw/sdk — check each example’s package.json for the range)
 cd examples/<name>
 npm install
 cp .env.example .env     # or .env.local.example → .env.local for Next.js
