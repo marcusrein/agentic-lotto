@@ -1,6 +1,21 @@
-# 1Claw x402 payments example
+# 1Claw x402 Payments Example
+
+> **Reference only** — not for production use. Review and adapt for your own security requirements.
 
 This example demonstrates **real x402 micropayments** against the 1Claw API. When your org is over the free-tier quota (or you have no auth), payable endpoints return `402 Payment Required`. This script uses an EOA private key from `.env` to sign payments and retry, so you can call every x402-capable endpoint with automatic payment.
+
+## What you'll learn
+
+- Authenticate with 1Claw and call x402-capable endpoints (secrets, audit, simulate)
+- Handle **402 Payment Required** by signing with an EOA key and retrying with the `X-PAYMENT` header
+- Use the `@x402/evm` client with 1Claw's facilitator (Coinbase CDP on Base)
+- Run a **probe-only** mode (no payment key) to verify 402 behavior
+
+## Prerequisites
+
+- Node.js 20+
+- A [1Claw account](https://1claw.xyz) with an API key and vault
+- For real payments: an EOA private key with **USDC on Base** (chain 8453)
 
 ## Quick start
 
@@ -16,6 +31,42 @@ npm start
 ```
 
 The script authenticates with 1Claw, then calls get/put secret, audit, and optionally simulate. If the API returns 402, it signs the payment and retries with the `X-PAYMENT` header.
+
+## Demo walkthrough (5 min)
+
+### Step 1 — Install and configure
+
+```bash
+cd examples/x402-payments
+npm install
+cp .env.example .env
+```
+
+Set `ONECLAW_API_KEY` and `ONECLAW_VAULT_ID` from [1claw.xyz](https://1claw.xyz). For **probe only** (see 402 without paying), leave `X402_PRIVATE_KEY` unset and run `npm run probe`.
+
+### Step 2 — Generate an EOA key (for real payments)
+
+```bash
+node -e "console.log('0x'+require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Add the output as `X402_PRIVATE_KEY=0x...` in `.env`. For real payments when over quota, fund this wallet with USDC on Base.
+
+### Step 3 — Run the demo
+
+```bash
+npm start
+```
+
+**Expected behavior:** The script authenticates, then hits x402-capable endpoints (get/put secret, audit, optionally simulate). For each request that returns **402**, it signs the payment and retries with `X-PAYMENT`; you see either **200 OK** or **402** (e.g. if the facilitator or key isn't set up).
+
+**Probe only (no payment key):**
+
+```bash
+npm run probe
+```
+
+Performs GET requests and prints status codes so you can confirm 402 when payment is required.
 
 ## x402-capable endpoints (1Claw)
 

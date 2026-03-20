@@ -2,6 +2,12 @@
 
 > **Reference only** — not for production. This example targets organizations that have **LLM Token Billing** enabled in the dashboard (**Settings → Billing**). It verifies agent JWT claims (`llm_token_billing`, `stripe_customer_id`) and sends a minimal chat request through **Shroud** so traffic can be metered via **Stripe AI Gateway** when Shroud is configured with `STRIPE_SECRET_KEY`.
 
+## What you'll learn
+
+- Confirm your org has **LLM Token Billing** enabled and your agent JWT includes `llm_token_billing` and `stripe_customer_id`
+- Send a chat completion through **Shroud** so traffic is metered via Stripe AI Gateway (no need to send provider API keys from the client)
+- Use the same Shroud LLM path as [shroud-demo](../shroud-demo/) but with a focus on billing claims
+
 ## Prerequisites
 
 1. **Org:** Same organization as your user API key must have **LLM Token Billing** active (complete Stripe checkout in the dashboard).
@@ -9,7 +15,35 @@
 3. **Agent:** An agent with **Shroud** enabled (`shroud_enabled: true`). Use `npm run setup` or create one in the dashboard.
 4. **OpenAI key:** **NOT required** when LLM Token Billing is enabled (Stripe AI Gateway handles provider keys). Only needed if billing is disabled and you're not storing the key in the vault.
 
-## Quick start
+## Demo walkthrough (5 min)
+
+### Step 1 — Install and configure
+
+```bash
+cd examples/shroud-llm
+npm install
+cp .env.example .env
+```
+
+Edit `.env`: set `ONECLAW_API_KEY` (user key from [1claw.xyz/settings/api-keys](https://1claw.xyz/settings/api-keys)). For `npm start` you also need agent credentials: set `ONECLAW_AGENT_ID` and `ONECLAW_AGENT_API_KEY` (or run `npm run setup` to create an agent and have it written to `.env`).
+
+### Step 2 — Create an agent (if needed)
+
+```bash
+npm run setup
+```
+
+This creates an agent with Shroud enabled and writes `ONECLAW_AGENT_ID` and `ONECLAW_AGENT_API_KEY` to `.env`. In the dashboard, ensure **Settings → Billing → LLM Token Billing** is enabled for your org.
+
+### Step 3 — Run the demo
+
+```bash
+npm start
+```
+
+**Expected behavior:** The script exchanges agent credentials for a JWT, decodes it to verify `llm_token_billing` and `stripe_customer_id`, then sends a minimal `POST https://shroud.1claw.xyz/v1/chat/completions` request with `X-Shroud-Agent-Key` and `X-Shroud-Provider: openai`. If claims are present, Shroud routes to Stripe's AI Gateway and sets `X-Stripe-Customer-ID` server-side. You should see success (or a skip if agent credentials are missing, e.g. in CI).
+
+## Quick start (summary)
 
 ```bash
 cd examples/shroud-llm
