@@ -161,17 +161,34 @@ async function main() {
     signal: AbortSignal.timeout(45_000),
   });
 
+  const responseText = await res.text();
+
   if (res.status === 200) {
-    const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-    const content = data.choices?.[0]?.message?.content?.trim() ?? "";
-    if (content.toUpperCase().includes("OK")) {
-      console.log("[OK]   Chat completion → 200");
-      passed++;
-    } else {
-      console.log("[FAIL] Unexpected content:", content.slice(0, 80));
+    let data: { choices?: Array<{ message?: { content?: string } }>; [k: string]: unknown } | null =
+      null;
+    try {
+      data = JSON.parse(responseText) as NonNullable<typeof data>;
+    } catch {
+      console.log("[FAIL] Invalid JSON response");
+      console.log("Raw response:", responseText.slice(0, 500));
       failed++;
     }
+    if (data) {
+      // Log full LLM gateway response
+      console.log("       Full response from LLM gateway:");
+      console.log(JSON.stringify(data, null, 2));
+      const content = data.choices?.[0]?.message?.content?.trim() ?? "";
+      if (content.toUpperCase().includes("OK")) {
+        console.log("[OK]   Chat completion → 200");
+        passed++;
+      } else {
+        console.log("[FAIL] Unexpected content:", content.slice(0, 80));
+        failed++;
+      }
+    }
   } else if (res.status === 401) {
+    console.log("       Full 401 response body:");
+    console.log(responseText);
     if (hasLlmBilling) {
       console.log(
         "[FAIL] 401 with LLM billing enabled — Shroud should use Stripe keys. Check Shroud STRIPE_SECRET_KEY config.",
@@ -184,8 +201,8 @@ async function main() {
       skipped++;
     }
   } else {
-    const text = await res.text();
-    console.log("[FAIL] →", res.status, text.slice(0, 120));
+    console.log("[FAIL] →", res.status);
+    console.log("Full response:", responseText);
     failed++;
   }
 
