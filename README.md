@@ -2,7 +2,7 @@
 
 > **Reference only** — these examples are for educational and demo purposes. They are not production-ready and may contain hardcoded values, skip error handling, or use development-only configurations. Always review and adapt for your own security requirements.
 
-Eleven example applications demonstrating the [1Claw](https://1claw.xyz) SDK, API, and MCP server in agentic workflows. Each is self-contained with a step-by-step walkthrough you can run in 5–10 minutes.
+Twelve example applications demonstrating the [1Claw](https://1claw.xyz) SDK, API, and MCP server in agentic workflows. Each is self-contained with a step-by-step walkthrough you can run in 5–10 minutes.
 
 ## Quick reference
 
@@ -15,6 +15,7 @@ Eleven example applications demonstrating the [1Claw](https://1claw.xyz) SDK, AP
 | [google-a2a](./google-a2a/)                   | Intermediate | 10 min | Two agents communicate via Google A2A protocol + 1Claw vaults (includes ADK demo)          |
 | [tx-simulation](./tx-simulation/)             | Intermediate | 10 min | AI agent signs on-chain transactions with guardrails and Tenderly simulation               |
 | [shroud-demo](./shroud-demo/)                 | Intermediate | 5 min  | Shroud TEE proxy: health, agent auth, Intents API, LLM proxy (key from Vault or header)    |
+| [shroud-llm](./shroud-llm/)                   | Intermediate | 5 min  | Shroud + **LLM Token Billing**: verify JWT claims, chat via Stripe AI Gateway path (opt-in org) |
 | [local-inspect](./local-inspect/)             | Beginner     | 2 min  | Detect prompt injection, PII, and threats — no account needed, runs offline               |
 | [shroud-security](./shroud-security/)         | Intermediate | 5 min  | Shroud threat detection: Unicode, command injection, social engineering, encoding, network |
 | [ampersend-x402](./ampersend-x402/)           | Advanced     | 10 min | x402 micropayments via Ampersend — MCP/HTTP clients, hybrid billing, paywall server        |
@@ -42,7 +43,7 @@ npm start
 
 Add `GOOGLE_API_KEY` or `OPENAI_API_KEY` for langchain-agent, `ANTHROPIC_API_KEY` for nextjs-agent-secret, and `SMART_ACCOUNT_ADDRESS` (and optional wallet key) for ampersend-x402 as needed.
 
-**Test all examples:** From the repo root, run `./examples/scripts/test-all-examples.sh`. This installs deps (unless `SKIP_INSTALL=1`), runs each example’s main script or build, and reports pass/fail. CLI-style examples are run to completion or stopped after a short delay; Next.js examples are build-only.
+**Test all examples:** From the repo root, run `./examples/scripts/test-all-examples.sh`. This installs deps (unless `SKIP_INSTALL=1`), runs each example’s main script or build, and reports pass/fail (12 examples). CLI-style examples are run to completion or stopped after a short delay; Next.js examples are build-only. **shroud-llm** skips unless `.env` has agent credentials; use an org with LLM Token Billing enabled for full JWT checks.
 
 **Cleanup:** To delete all secrets in demo accounts (except ampersend-x402, so `keys/x402-session-key` is kept), run `./scripts/cleanup-demo-secrets.sh` from the repo root.
 
@@ -73,9 +74,10 @@ If you're new to 1Claw, walk through the examples in this order:
 6. **[tx-simulation](./tx-simulation/)** — On-chain transactions with guardrails and simulation
 7. **[local-inspect](./local-inspect/)** — Detect threats in LLM output locally — no account, no network
 8. **[shroud-demo](./shroud-demo/)** — Shroud TEE proxy: health, Intents API, LLM proxy (no LLM key required if stored in Vault)
-9. **[shroud-security](./shroud-security/)** — Shroud threat detection filters: Unicode, injection, social engineering
-10. **[ampersend-x402](./ampersend-x402/)** — Payments and billing integration
-11. **[x402-payments](./x402-payments/)** — Real x402 payments for all supported endpoints (EOA key in .env)
+9. **[shroud-llm](./shroud-llm/)** — Same Shroud LLM path, focused on orgs with **LLM Token Billing** (JWT claims + optional org API check)
+10. **[shroud-security](./shroud-security/)** — Shroud threat detection filters: Unicode, injection, social engineering
+11. **[ampersend-x402](./ampersend-x402/)** — Payments and billing integration
+12. **[x402-payments](./x402-payments/)** — Real x402 payments for all supported endpoints (EOA key in .env)
 
 ## What you need
 
@@ -85,8 +87,8 @@ If you're new to 1Claw, walk through the examples in this order:
 | 1Claw vault + secrets       | [1claw.xyz](https://1claw.xyz) dashboard                                | All except basic (creates its own)                                                  |
 | Gemini API key              | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) (free) | langchain, google-a2a, tx-simulation                                                |
 | Anthropic API key           | [console.anthropic.com](https://console.anthropic.com)                  | nextjs-agent-secret                                                                 |
-| OpenAI API key              | [platform.openai.com](https://platform.openai.com)                      | langchain (alternative to Gemini); shroud-demo LLM proxy (optional if key in Vault) |
-| 1Claw agent (ID + API key)  | [1claw.xyz](https://1claw.xyz) — create agent, enable Intents API       | shroud-demo, tx-simulation                                                          |
+| OpenAI API key              | [platform.openai.com](https://platform.openai.com)                      | langchain (alternative to Gemini); shroud-demo / shroud-llm (optional if key in Vault) |
+| 1Claw agent (ID + API key)  | [1claw.xyz](https://1claw.xyz) — create agent, Shroud enabled for LLM   | shroud-demo, shroud-llm, tx-simulation                                                |
 | Smart account + session key | [Ampersend docs](https://docs.ampersend.ai)                             | ampersend-x402                                                                      |
 | EOA private key (Base USDC) | Generate hex key, fund with USDC on Base                                | x402-payments                                                                       |
 
