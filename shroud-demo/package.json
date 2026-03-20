@@ -7,12 +7,14 @@
   "scripts": {
     "start": "npx tsx --env-file=.env src/index.ts",
     "setup": "npx tsx --env-file=.env src/setup-env.ts",
+    "setup-signing": "npx tsx --env-file=.env src/setup-signing.ts",
     "health": "npx tsx --env-file=.env src/health.ts",
     "intents": "npx tsx --env-file=.env src/intents.ts",
     "llm-proxy": "npx tsx --env-file=.env src/llm-proxy.ts",
     "test": "npx tsx --env-file=.env src/index.ts",
     "real-llm": "npx tsx --env-file=.env src/real-llm.ts",
-    "real-tx": "npx tsx --env-file=.env src/real-tx.ts"
+    "real-tx": "npx tsx --env-file=.env src/real-tx.ts",
+    "real-sign-only": "npx tsx --env-file=.env src/real-sign-only.ts"
   },
   "dependencies": {
     "@1claw/sdk": "^0.15.0"

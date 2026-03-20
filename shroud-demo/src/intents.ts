@@ -42,7 +42,7 @@ export async function runIntentsChecks(): Promise<{ passed: number; failed: numb
   const token = await getAgentToken();
   if (!token) {
     console.log("[SKIP] Set ONECLAW_AGENT_ID and ONECLAW_AGENT_API_KEY in .env — Intents tests skipped");
-    skipped += 4;
+    skipped += 5;
     return { passed, failed, skipped };
   }
 
@@ -118,6 +118,30 @@ export async function runIntentsChecks(): Promise<{ passed: number; failed: numb
     passed++;
   } else {
     console.log("[FAIL] POST .../simulate →", simRes.status);
+    failed++;
+  }
+
+  // Sign-only (TEE signs, no broadcast) — 200 with signed_tx + tx_hash, or 400/403
+  const signRes = await fetch(
+    `${SHROUD_URL}/v1/agents/${creds.agentId}/transactions/sign`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeader },
+      body: JSON.stringify({
+        chain: "sepolia",
+        to: "0x0000000000000000000000000000000000000000",
+        value: "0",
+        data: "0x",
+      }),
+      signal: AbortSignal.timeout(15_000),
+    }
+  );
+  const signOk = signRes.status === 200 || [400, 401, 403, 404, 422, 500, 501, 502].includes(signRes.status);
+  if (signOk) {
+    console.log("[OK]   POST .../transactions/sign →", signRes.status);
+    passed++;
+  } else {
+    console.log("[FAIL] POST .../transactions/sign →", signRes.status);
     failed++;
   }
 

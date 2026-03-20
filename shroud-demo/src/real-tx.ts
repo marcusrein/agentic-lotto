@@ -30,6 +30,7 @@ async function main() {
     to: "0x000000000000000000000000000000000000dEaD",
     value: "0",
     data: "0x",
+    signing_key_path: "keys/base-signer",
   };
 
   console.log("Submitting real transaction via Shroud (Base mainnet, 0 value, burn address)...\n");
