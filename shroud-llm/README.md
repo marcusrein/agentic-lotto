@@ -7,7 +7,7 @@
 1. **Org:** Same organization as your user API key must have **LLM Token Billing** active (complete Stripe checkout in the dashboard).
 2. **Stripe customer:** The org should have a Stripe customer id (created when you first use billing or checkout).
 3. **Agent:** An agent with **Shroud** enabled (`shroud_enabled: true`). Use `npm run setup` or create one in the dashboard.
-4. **OpenAI key:** Either set `OPENAI_API_KEY` in `.env` or store the key in the vault at `providers/openai/api-key` with agent read access.
+4. **OpenAI key:** **NOT required** when LLM Token Billing is enabled (Stripe AI Gateway handles provider keys). Only needed if billing is disabled and you're not storing the key in the vault.
 
 ## Quick start
 
@@ -40,7 +40,7 @@ When claims are present, **Shroud** routes to Stripe’s AI Gateway (`llm.stripe
 | `ONECLAW_API_KEY` | Optional | User API key — org billing check + `npm run setup` |
 | `ONECLAW_API_URL` | No | Default `https://api.1claw.xyz` |
 | `ONECLAW_SHROUD_URL` | No | Default `https://shroud.1claw.xyz` |
-| `OPENAI_API_KEY` | No* | *Required unless vault has `providers/openai/api-key` |
+| `OPENAI_API_KEY` | No | **Not needed** when LLM billing is enabled (Stripe handles keys). Only if billing disabled + no vault key. |
 
 ## Testing with a dedicated account
 

@@ -129,13 +129,22 @@ async function main() {
   }
 
   console.log("── Shroud POST /v1/chat/completions ──");
+  const hasLlmBilling = llmBill === true && stripeCust && typeof stripeCust === "string";
+  
+  if (hasLlmBilling) {
+    console.log("       Note: LLM billing enabled → Stripe AI Gateway handles provider keys (no OPENAI_API_KEY needed)");
+  } else if (!OPENAI_API_KEY) {
+    console.log("       Note: Without LLM billing, you need OPENAI_API_KEY or key in vault at providers/openai/api-key");
+  }
+
   const headers: Record<string, string> = {
     "X-Shroud-Agent-Key": `${creds.agentId}:${creds.apiKey}`,
     "Content-Type": "application/json",
     "X-Shroud-Provider": "openai",
     "X-Shroud-Model": "gpt-4o-mini",
   };
-  if (OPENAI_API_KEY) {
+  // Only send X-Shroud-Api-Key if LLM billing is NOT enabled (Stripe handles keys when billing is on)
+  if (!hasLlmBilling && OPENAI_API_KEY) {
     headers["X-Shroud-Api-Key"] = OPENAI_API_KEY;
   }
 
@@ -163,10 +172,17 @@ async function main() {
       failed++;
     }
   } else if (res.status === 401) {
-    console.log(
-      "[SKIP] 401 — set OPENAI_API_KEY or store key at providers/openai/api-key (agent read)",
-    );
-    skipped++;
+    if (hasLlmBilling) {
+      console.log(
+        "[FAIL] 401 with LLM billing enabled — Shroud should use Stripe keys. Check Shroud STRIPE_SECRET_KEY config.",
+      );
+      failed++;
+    } else {
+      console.log(
+        "[SKIP] 401 — set OPENAI_API_KEY or store key at providers/openai/api-key (agent read)",
+      );
+      skipped++;
+    }
   } else {
     const text = await res.text();
     console.log("[FAIL] →", res.status, text.slice(0, 120));
