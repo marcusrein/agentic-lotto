@@ -29,7 +29,7 @@ npm start
 | Agent JWT | `POST /v1/auth/agent-token` then decode payload for `llm_token_billing` and `stripe_customer_id`. |
 | Shroud LLM | `POST https://shroud.1claw.xyz/v1/chat/completions` with `X-Shroud-Agent-Key`, `X-Shroud-Provider: openai`. |
 
-When claims are present, **Shroud** routes to Stripe’s AI Gateway (`llm.stripe.com`) and sets `X-Stripe-Customer-ID` server-side. You do not send that header from the client.
+When claims are present, **Shroud** routes to Stripe's AI Gateway (`llm.stripe.com`) and sets `X-Stripe-Customer-ID` server-side. **Stripe AI Gateway handles the provider API keys** — you do **not** need to provide `OPENAI_API_KEY` or store keys in the vault when LLM billing is enabled. You do not send `X-Stripe-Customer-ID` from the client.
 
 ## Environment variables
 
@@ -44,7 +44,7 @@ When claims are present, **Shroud** routes to Stripe’s AI Gateway (`llm.stripe
 
 ## Testing with a dedicated account
 
-Use any org where you have enabled **LLM Token Billing** (e.g. a staging org or your production org). Point `.env` at that org’s user API key for setup/verification and an agent that belongs to the same org. There is no separate “demo-only” flag — billing state is entirely from the dashboard + Stripe.
+Use any org where you have enabled **LLM Token Billing** (e.g. a staging org or your production org). Point `.env` at that org's user API key for setup/verification and an agent that belongs to the same org. There is no separate "demo-only" flag — billing state is entirely from the dashboard + Stripe.
 
 ## Exit codes
 
