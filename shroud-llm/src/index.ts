@@ -154,7 +154,17 @@ async function main() {
     max_tokens: 10,
   });
 
-  const res = await fetch(`${SHROUD_URL}/v1/chat/completions`, {
+  const requestUrl = `${SHROUD_URL}/v1/chat/completions`;
+  const headersForLog = { ...headers };
+  if (headersForLog["X-Shroud-Agent-Key"]) headersForLog["X-Shroud-Agent-Key"] = "[REDACTED]";
+  if (headersForLog["X-Shroud-Api-Key"]) headersForLog["X-Shroud-Api-Key"] = "[REDACTED]";
+  console.log("       ── Full request ──");
+  console.log("       URL:", requestUrl);
+  console.log("       Method: POST");
+  console.log("       Headers:", JSON.stringify(headersForLog, null, 2));
+  console.log("       Body:", body);
+
+  const res = await fetch(requestUrl, {
     method: "POST",
     headers,
     body,
@@ -162,6 +172,15 @@ async function main() {
   });
 
   const responseText = await res.text();
+
+  console.log("       ── Full response ──");
+  console.log("       Status:", res.status, res.statusText);
+  const responseHeaders: Record<string, string> = {};
+  res.headers.forEach((v, k) => {
+    responseHeaders[k] = v;
+  });
+  console.log("       Headers:", JSON.stringify(responseHeaders, null, 2));
+  console.log("       Body:", responseText.slice(0, 2000) + (responseText.length > 2000 ? "\n... (truncated)" : ""));
 
   if (res.status === 200) {
     let data: { choices?: Array<{ message?: { content?: string } }>; [k: string]: unknown } | null =
