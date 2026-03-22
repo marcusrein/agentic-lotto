@@ -5,7 +5,7 @@
 
 set -e
 EXAMPLES_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-ROOT="$(cd "$EXAMPLES_ROOT/../.." && pwd)"
+ROOT="$(cd "$EXAMPLES_ROOT/.." && pwd)"
 cd "$ROOT"
 
 PASS=0
