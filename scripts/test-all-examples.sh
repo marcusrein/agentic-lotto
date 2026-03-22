@@ -152,7 +152,8 @@ LANGCHAIN_OUT=$(mktemp 2>/dev/null || echo /tmp/langchain-out.$$)
 (cd "$EXAMPLES_ROOT/langchain-agent" && npm start > "$LANGCHAIN_OUT" 2>&1) & lpid=$!
 sleep 45
 kill "$lpid" 2>/dev/null || true
-( wait "$lpid" 2>/dev/null; true )
+# Under set -e, ( wait; true ) still exits 127 if the child exited 127 (wait runs before true).
+wait "$lpid" 2>/dev/null || true
 out=$(cat "$LANGCHAIN_OUT" 2>/dev/null || echo "timeout or no output")
 rm -f "$LANGCHAIN_OUT"
 if echo "$out" | grep -q "ONECLAW_API_KEY\|VAULT_ID\|OPENAI_API_KEY\|GOOGLE_API_KEY\|Required env\|timeout or no output"; then
