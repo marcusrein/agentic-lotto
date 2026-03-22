@@ -15,7 +15,10 @@ SKIP="${SKIP_INSTALL:-0}"
 # Portable timeout: run cmd in background, sleep, then kill. Usage: run_timeout <dir> <seconds> <cmd>
 run_timeout() {
   local dir="$1" sec="$2" cmd="$3"
-  (cd "$dir" && eval "$cmd" &); local pid=$!
+  # Background the whole subshell so $! in this shell is the real child PID
+  # (a `&` inside `( )` does not update the parent's $!).
+  (cd "$dir" && eval "$cmd") &
+  local pid=$!
   sleep "$sec"
   kill "$pid" 2>/dev/null || true
   wait "$pid" 2>/dev/null || true
