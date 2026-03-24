@@ -2,6 +2,7 @@
  * Shroud health and TLS checks (no auth required).
  * GET /healthz, /health/ready, /health/live; verify TLS.
  */
+import { fileURLToPath } from "node:url";
 import "./load-env.js";
 
 const SHROUD_URL = (process.env.ONECLAW_SHROUD_URL || "https://shroud.1claw.xyz").trim() || "https://shroud.1claw.xyz";
@@ -63,4 +64,14 @@ export async function runHealthChecks(): Promise<{ passed: number; failed: numbe
   }
 
   return { passed, failed };
+}
+
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) {
+  runHealthChecks()
+    .then((r) => process.exit(r.failed > 0 ? 1 : 0))
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    });
 }

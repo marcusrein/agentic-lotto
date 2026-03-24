@@ -3,6 +3,7 @@
  * transaction list, simulate, and (optionally) submit.
  * Reads ONECLAW_AGENT_ID and ONECLAW_AGENT_API_KEY from .env.
  */
+import { fileURLToPath } from "node:url";
 import "./load-env.js";
 
 const SHROUD_URL = (process.env.ONECLAW_SHROUD_URL || "https://shroud.1claw.xyz").trim().replace(
@@ -146,4 +147,14 @@ export async function runIntentsChecks(): Promise<{ passed: number; failed: numb
   }
 
   return { passed, failed, skipped };
+}
+
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) {
+  runIntentsChecks()
+    .then((r) => process.exit(r.failed > 0 ? 1 : 0))
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    });
 }

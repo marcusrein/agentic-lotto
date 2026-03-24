@@ -4,6 +4,7 @@
  * (2) X-Shroud-Api-Key header (e.g. from OPENAI_API_KEY env).
  * Reads ONECLAW_AGENT_ID and ONECLAW_AGENT_API_KEY from .env.
  */
+import { fileURLToPath } from "node:url";
 import "./load-env.js";
 
 const SHROUD_URL = (process.env.ONECLAW_SHROUD_URL || "https://shroud.1claw.xyz").trim().replace(
@@ -96,4 +97,14 @@ export async function runLlmProxyCheck(): Promise<{ passed: number; failed: numb
   }
 
   return { passed, failed, skipped };
+}
+
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) {
+  runLlmProxyCheck()
+    .then((r) => process.exit(r.failed > 0 ? 1 : 0))
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    });
 }
