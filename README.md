@@ -55,6 +55,8 @@ Every example follows the same pattern:
 # 1. Set up the example (uses published @1claw/sdk — check each example’s package.json for the range)
 cd examples/<name>
 npm install
+# If npm reports peer dependency conflicts (e.g. langchain-agent), use:
+#   npm install --legacy-peer-deps
 cp .env.example .env     # or .env.local.example → .env.local for Next.js
 # Fill in your credentials
 
