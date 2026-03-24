@@ -61,7 +61,7 @@ async function main() {
   const vaults = listRes.data?.vaults ?? [];
   let vaultId: string;
 
-  const existing = vaults.find((v) => v.name === "shroud-demo-vault");
+  const existing = vaults.find((v: { id: string; name?: string }) => v.name === "shroud-demo-vault");
   if (existing) {
     vaultId = existing.id;
     console.log("Using existing vault:", vaultId, "(" + existing.name + ")");
