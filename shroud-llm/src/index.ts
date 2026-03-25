@@ -3,7 +3,11 @@
  *
  * 1. Exchanges agent API key for JWT and decodes llm_token_billing / stripe_customer_id.
  * 2. Optionally verifies org setting via user API key + GET /v1/billing/llm-token-billing.
- * 3. POST /v1/chat/completions to Shroud (Stripe routes when claims are present on Shroud).
+ * 3. For each supported provider (OpenAI, Anthropic, Google), sends a minimal request through Shroud.
+ *
+ * Paths: OpenAI + Google → POST /v1/chat/completions.
+ *        Anthropic → POST /v1/messages (native) when billing is off; POST /v1/chat/completions (OpenAI-shaped
+ *        body) when billing is on so Stripe AI Gateway can route Claude (native /v1/messages models differ).
  */
 import "./load-env.js";
 
@@ -12,7 +16,12 @@ const SHROUD_URL = (process.env.ONECLAW_SHROUD_URL || "https://shroud.1claw.xyz"
   "",
 );
 const API_URL = (process.env.ONECLAW_API_URL || "https://api.1claw.xyz").trim().replace(/\/$/, "");
+const VERBOSE = process.env.SHROUD_LLM_VERBOSE === "1";
+
 const OPENAI_API_KEY = (process.env.OPENAI_API_KEY ?? "").trim();
+const ANTHROPIC_API_KEY = (process.env.ANTHROPIC_API_KEY ?? "").trim();
+const GOOGLE_API_KEY = (process.env.GOOGLE_API_KEY ?? process.env.GEMINI_API_KEY ?? "").trim();
+
 const USER_API_KEY = (process.env.ONECLAW_API_KEY ?? "").trim();
 
 function getAgentCreds(): { agentId: string; apiKey: string } | null {
@@ -68,9 +77,244 @@ async function checkOrgLlmBillingFromUserKey(): Promise<{ enabled: boolean } | n
   return { enabled: Boolean(data.enabled) };
 }
 
+/** OpenAI `choices[].message.content` or Anthropic `content[].text` (gateways may return either). */
+function assistantReplyText(data: unknown): string {
+  if (!data || typeof data !== "object") return "";
+  const o = data as Record<string, unknown>;
+
+  const choices = o.choices as
+    | Array<{
+        message?: {
+          content?: string | Array<{ type?: string; text?: string }>;
+        };
+      }>
+    | undefined;
+  const msg0 = choices?.[0]?.message;
+  const c = msg0?.content;
+  if (typeof c === "string" && c.trim()) return c.trim();
+  if (Array.isArray(c)) {
+    const joined = c
+      .map((part) =>
+        typeof part === "object" && part && typeof part.text === "string" ? part.text : "",
+      )
+      .join("");
+    if (joined.trim()) return joined.trim();
+  }
+
+  const content = o.content as Array<{ type?: string; text?: string }> | undefined;
+  if (Array.isArray(content)) {
+    const textBlock = content.find((c) => c.type === "text" && typeof c.text === "string");
+    if (textBlock?.text) return textBlock.text.trim();
+  }
+
+  const candidates = o.candidates as
+    | Array<{ content?: { parts?: Array<{ text?: string }> } }>
+    | undefined;
+  const parts = candidates?.[0]?.content?.parts;
+  const geminiText = parts?.map((p) => p.text).filter(Boolean).join("");
+  if (geminiText?.trim()) return geminiText.trim();
+
+  return "";
+}
+
+type ProviderCase = {
+  id: string;
+  path: string;
+  xShroudProvider: string;
+  xShroudModel: string;
+  body: Record<string, unknown>;
+  /** Env-backed API key when LLM billing is off (X-Shroud-Api-Key) */
+  directApiKey: string;
+  directKeyName: string;
+};
+
+const PROMPT = "Reply with exactly: OK";
+
+/** Direct Gemini uses `contents`. Stripe Anthropic uses chat-completions-shaped JSON, not /v1/messages. */
+function buildRequestBody(p: ProviderCase, hasLlmBilling: boolean): Record<string, unknown> {
+  if (p.id === "google" && !hasLlmBilling) {
+    return {
+      contents: [{ role: "user", parts: [{ text: PROMPT }] }],
+    };
+  }
+  if (p.id === "anthropic" && hasLlmBilling) {
+    // Stripe gateway allowlist varies; Haiku 3.5 is commonly routed (rewritten to anthropic/… by Shroud).
+    return {
+      model: "claude-3-5-haiku-20241022",
+      messages: [{ role: "user", content: PROMPT }],
+      max_tokens: 10,
+    };
+  }
+  if (p.id === "anthropic" && !hasLlmBilling) {
+    return {
+      model: "claude-sonnet-4-5-20250929",
+      max_tokens: 10,
+      messages: [{ role: "user", content: PROMPT }],
+    };
+  }
+  return p.body;
+}
+
+function shroudPath(p: ProviderCase, hasLlmBilling: boolean): string {
+  if (p.id === "anthropic" && hasLlmBilling) {
+    return "/v1/chat/completions";
+  }
+  return p.path;
+}
+
+const PROVIDERS: ProviderCase[] = [
+  {
+    id: "openai",
+    path: "/v1/chat/completions",
+    xShroudProvider: "openai",
+    xShroudModel: "gpt-4o-mini",
+    body: {
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: PROMPT }],
+      max_tokens: 10,
+    },
+    directApiKey: OPENAI_API_KEY,
+    directKeyName: "OPENAI_API_KEY",
+  },
+  {
+    id: "anthropic",
+    path: "/v1/messages",
+    xShroudProvider: "anthropic",
+    xShroudModel: "claude-3-5-haiku-20241022",
+    body: {
+      model: "claude-sonnet-4-5-20250929",
+      max_tokens: 10,
+      messages: [{ role: "user", content: PROMPT }],
+    },
+    directApiKey: ANTHROPIC_API_KEY,
+    directKeyName: "ANTHROPIC_API_KEY",
+  },
+  {
+    id: "google",
+    path: "/v1/chat/completions",
+    xShroudProvider: "google",
+    // Prefer a model Stripe’s gateway consistently exposes as google/… (2.5 may return empty via some gateways).
+    xShroudModel: "gemini-2.0-flash",
+    body: {
+      model: "gemini-2.0-flash",
+      messages: [{ role: "user", content: PROMPT }],
+      max_tokens: 10,
+    },
+    directApiKey: GOOGLE_API_KEY,
+    directKeyName: "GOOGLE_API_KEY",
+  },
+];
+
+async function runProvider(
+  creds: { agentId: string; apiKey: string },
+  hasLlmBilling: boolean,
+  p: ProviderCase,
+): Promise<"pass" | "fail" | "skip"> {
+  const needsKey = !hasLlmBilling && !p.directApiKey;
+  if (needsKey) {
+    console.log(
+      `[SKIP] ${p.id}: set ${p.directKeyName} or enable LLM Token Billing (Stripe supplies keys)`,
+    );
+    return "skip";
+  }
+
+  const headers: Record<string, string> = {
+    "X-Shroud-Agent-Key": `${creds.agentId}:${creds.apiKey}`,
+    "Content-Type": "application/json",
+    "X-Shroud-Provider": p.xShroudProvider,
+    "X-Shroud-Model": p.xShroudModel,
+  };
+  if (!hasLlmBilling && p.directApiKey) {
+    headers["X-Shroud-Api-Key"] = p.directApiKey;
+  }
+
+  const path = shroudPath(p, hasLlmBilling);
+  const body = JSON.stringify(buildRequestBody(p, hasLlmBilling));
+  const requestUrl = `${SHROUD_URL}${path}`;
+
+  if (VERBOSE) {
+    const headersForLog = { ...headers };
+    if (headersForLog["X-Shroud-Agent-Key"]) headersForLog["X-Shroud-Agent-Key"] = "[REDACTED]";
+    if (headersForLog["X-Shroud-Api-Key"]) headersForLog["X-Shroud-Api-Key"] = "[REDACTED]";
+    console.log(`\n── Shroud ${p.id} ──`);
+    console.log("       URL:", requestUrl);
+    console.log("       Headers:", JSON.stringify(headersForLog, null, 2));
+    console.log("       Body:", body);
+  } else {
+    console.log(`── Shroud ${p.id} (${path}) ──`);
+  }
+
+  const res = await fetch(requestUrl, {
+    method: "POST",
+    headers,
+    body,
+    signal: AbortSignal.timeout(60_000),
+  });
+
+  const responseText = await res.text();
+
+  if (VERBOSE) {
+    console.log("       Status:", res.status, res.statusText);
+    console.log("       Body:", responseText.slice(0, 2500) + (responseText.length > 2500 ? "\n... (truncated)" : ""));
+  }
+
+  if (res.status === 200) {
+    let data: unknown;
+    try {
+      data = JSON.parse(responseText) as unknown;
+    } catch {
+      console.log(`[FAIL] ${p.id}: invalid JSON`);
+      return "fail";
+    }
+    const text = assistantReplyText(data);
+    if (VERBOSE) {
+      console.log("       Parsed response:", JSON.stringify(data, null, 2).slice(0, 2000));
+    }
+    if (text.toUpperCase().includes("OK")) {
+      console.log(`[OK]   ${p.id} → 200`);
+      return "pass";
+    }
+    console.log(`[FAIL] ${p.id}: unexpected content: ${text.slice(0, 120)}`);
+    return "fail";
+  }
+
+  if (res.status === 401) {
+    if (hasLlmBilling) {
+      console.log(
+        `[FAIL] ${p.id}: 401 with LLM billing — check Shroud STRIPE_SECRET_KEY / gateway config`,
+      );
+      return "fail";
+    }
+    console.log(`[SKIP] ${p.id}: 401 — set ${p.directKeyName} or enable billing`);
+    return "skip";
+  }
+
+  // Stripe AI Gateway Anthropic allowlist varies by program/account; don’t fail the whole demo.
+  if (
+    res.status === 400 &&
+    p.id === "anthropic" &&
+    hasLlmBilling &&
+    responseText.toLowerCase().includes("supported model")
+  ) {
+    console.log(
+      "[SKIP] anthropic: Stripe gateway returned unsupported model for this account (allowlist).",
+    );
+    console.log(
+      "       Set ANTHROPIC_API_KEY to test direct Anthropic via POST /v1/messages, or pick a model Stripe lists for your org.",
+    );
+    if (!VERBOSE) console.log(responseText.slice(0, 400));
+    return "skip";
+  }
+
+  console.log(`[FAIL] ${p.id}: HTTP ${res.status}`);
+  if (!VERBOSE) console.log(responseText.slice(0, 500));
+  return "fail";
+}
+
 async function main() {
   console.log("═══════════════════════════════════════════════════");
   console.log("  1Claw — Shroud LLM (LLM Token Billing path)");
+  console.log("  Providers: OpenAI, Anthropic, Google (Gemini via Stripe when billing on)");
   console.log("═══════════════════════════════════════════════════\n");
 
   let passed = 0;
@@ -117,115 +361,34 @@ async function main() {
   console.log("       llm_token_billing:", llmBill);
   console.log("       stripe_customer_id:", stripeCust ?? "(none)");
 
-  if (llmBill === true && stripeCust && typeof stripeCust === "string") {
+  const hasLlmBilling: boolean =
+    llmBill === true && typeof stripeCust === "string" && stripeCust.length > 0;
+
+  if (hasLlmBilling) {
     console.log("[OK]   Agent JWT includes LLM billing claims (Stripe AI Gateway path eligible)\n");
     passed++;
+    console.log(
+      "── Provider checks (billing on → no X-Shroud-Api-Key; Stripe routes by model prefix) ──",
+    );
   } else {
     console.log(
-      "[SKIP] Agent JWT missing LLM billing — enable LLM Token Billing for this org and ensure Stripe customer exists.",
+      "[SKIP] Agent JWT missing LLM billing — direct provider keys required per provider.\n",
     );
-    console.log("       Shroud will use direct provider routing until claims are present.\n");
     skipped++;
+    console.log(
+      "── Provider checks (billing off → set OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY as needed) ──",
+    );
   }
 
-  console.log("── Shroud POST /v1/chat/completions ──");
-  const hasLlmBilling = llmBill === true && stripeCust && typeof stripeCust === "string";
-  
-  if (hasLlmBilling) {
-    console.log("       Note: LLM billing enabled → Stripe AI Gateway handles provider keys (no OPENAI_API_KEY needed)");
-  } else if (!OPENAI_API_KEY) {
-    console.log("       Note: Without LLM billing, you need OPENAI_API_KEY or key in vault at providers/openai/api-key");
+  for (const p of PROVIDERS) {
+    const r = await runProvider(creds, hasLlmBilling, p);
+    if (r === "pass") passed++;
+    else if (r === "fail") failed++;
+    else skipped++;
+    console.log("");
   }
 
-  const headers: Record<string, string> = {
-    "X-Shroud-Agent-Key": `${creds.agentId}:${creds.apiKey}`,
-    "Content-Type": "application/json",
-    "X-Shroud-Provider": "openai",
-    "X-Shroud-Model": "gpt-4o-mini",
-  };
-  // Only send X-Shroud-Api-Key if LLM billing is NOT enabled (Stripe handles keys when billing is on)
-  if (!hasLlmBilling && OPENAI_API_KEY) {
-    headers["X-Shroud-Api-Key"] = OPENAI_API_KEY;
-  }
-
-  const body = JSON.stringify({
-    model: "gpt-4o-mini",
-    messages: [{ role: "user", content: "Reply with exactly: OK" }],
-    max_tokens: 10,
-  });
-
-  const requestUrl = `${SHROUD_URL}/v1/chat/completions`;
-  const headersForLog = { ...headers };
-  if (headersForLog["X-Shroud-Agent-Key"]) headersForLog["X-Shroud-Agent-Key"] = "[REDACTED]";
-  if (headersForLog["X-Shroud-Api-Key"]) headersForLog["X-Shroud-Api-Key"] = "[REDACTED]";
-  console.log("       ── Full request ──");
-  console.log("       URL:", requestUrl);
-  console.log("       Method: POST");
-  console.log("       Headers:", JSON.stringify(headersForLog, null, 2));
-  console.log("       Body:", body);
-
-  const res = await fetch(requestUrl, {
-    method: "POST",
-    headers,
-    body,
-    signal: AbortSignal.timeout(45_000),
-  });
-
-  const responseText = await res.text();
-
-  console.log("       ── Full response ──");
-  console.log("       Status:", res.status, res.statusText);
-  const responseHeaders: Record<string, string> = {};
-  res.headers.forEach((v, k) => {
-    responseHeaders[k] = v;
-  });
-  console.log("       Headers:", JSON.stringify(responseHeaders, null, 2));
-  console.log("       Body:", responseText.slice(0, 2000) + (responseText.length > 2000 ? "\n... (truncated)" : ""));
-
-  if (res.status === 200) {
-    let data: { choices?: Array<{ message?: { content?: string } }>; [k: string]: unknown } | null =
-      null;
-    try {
-      data = JSON.parse(responseText) as NonNullable<typeof data>;
-    } catch {
-      console.log("[FAIL] Invalid JSON response");
-      console.log("Raw response:", responseText.slice(0, 500));
-      failed++;
-    }
-    if (data) {
-      // Log full LLM gateway response
-      console.log("       Full response from LLM gateway:");
-      console.log(JSON.stringify(data, null, 2));
-      const content = data.choices?.[0]?.message?.content?.trim() ?? "";
-      if (content.toUpperCase().includes("OK")) {
-        console.log("[OK]   Chat completion → 200");
-        passed++;
-      } else {
-        console.log("[FAIL] Unexpected content:", content.slice(0, 80));
-        failed++;
-      }
-    }
-  } else if (res.status === 401) {
-    console.log("       Full 401 response body:");
-    console.log(responseText);
-    if (hasLlmBilling) {
-      console.log(
-        "[FAIL] 401 with LLM billing enabled — Shroud should use Stripe keys. Check Shroud STRIPE_SECRET_KEY config.",
-      );
-      failed++;
-    } else {
-      console.log(
-        "[SKIP] 401 — set OPENAI_API_KEY or store key at providers/openai/api-key (agent read)",
-      );
-      skipped++;
-    }
-  } else {
-    console.log("[FAIL] →", res.status);
-    console.log("Full response:", responseText);
-    failed++;
-  }
-
-  console.log("\n═══════════════════════════════════════════════════");
+  console.log("═══════════════════════════════════════════════════");
   console.log(`  Done: ${passed} passed, ${failed} failed, ${skipped} skipped`);
   console.log("═══════════════════════════════════════════════════\n");
 

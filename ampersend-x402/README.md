@@ -33,7 +33,7 @@ When the agent hits a **402 Payment Required**, Ampersend's treasurer authorizes
 - A [1Claw account](https://1claw.xyz) with an API key, vault, and agent
 - A smart account address (for Ampersend — see [Ampersend docs](https://docs.ampersend.ai))
 - For the paywall demo: [Coinbase CDP credentials](https://portal.cdp.coinbase.com/)
-- Uses `@1claw/sdk@^0.8.0` (npm install will fetch it)
+- Uses `@1claw/sdk@^0.17.0` (npm install will fetch it)
 
 ## Quick start (MCP + x402)
 
