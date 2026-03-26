@@ -10,6 +10,7 @@
     "build": "tsc"
   },
   "dependencies": {
+    "@1claw/mcp": "^0.17.0",
     "@1claw/sdk": "^0.17.0"
   },
   "devDependencies": {
