@@ -1,8 +1,9 @@
 /**
  * x402 paywall server — charges $0.001 USDC on Base mainnet per request.
  *
- * Uses the Coinbase CDP facilitator for payment verification and settlement.
- * Requires CDP_API_KEY_ID and CDP_API_KEY_SECRET in .env.
+ * Uses a local facilitator that supports both EOA and smart-account
+ * (ERC-6492) signatures. The facilitator wallet needs Base ETH for gas
+ * to settle `transferWithAuthorization` on-chain.
  *
  * Run:  npm run server
  * Test: curl http://localhost:4021/joke  (returns 402 without payment)
@@ -11,48 +12,74 @@
 import express from "express";
 import { paymentMiddleware, x402ResourceServer } from "@x402/express";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
-import { HTTPFacilitatorClient } from "@x402/core/server";
-import { generateJwt } from "@coinbase/cdp-sdk/auth";
+import { ExactEvmScheme as ExactEvmFacilitatorScheme } from "@x402/evm/exact/facilitator";
+import { x402Facilitator } from "@x402/core/facilitator";
+import { createWalletClient, createPublicClient, http } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { base } from "viem/chains";
+import { resolveBuyerKey } from "./resolve-buyer-key.js";
 
 const PAY_TO = process.env.X402_PAY_TO_ADDRESS!;
-const CDP_KEY_ID = process.env.CDP_API_KEY_ID!;
-const CDP_KEY_SECRET = process.env.CDP_API_KEY_SECRET!;
 const PORT = Number(process.env.X402_SERVER_PORT ?? 4021);
+
+const API_KEY = process.env.ONECLAW_API_KEY;
+const VAULT_ID = process.env.ONECLAW_VAULT_ID;
+const BASE_URL = process.env.ONECLAW_BASE_URL ?? "https://api.1claw.xyz";
+const AGENT_ID = process.env.ONECLAW_AGENT_ID;
 
 if (!PAY_TO) {
     console.error("Required: X402_PAY_TO_ADDRESS (receiving wallet for payments)");
     process.exit(1);
 }
-if (!CDP_KEY_ID || !CDP_KEY_SECRET) {
-    console.error("Required: CDP_API_KEY_ID, CDP_API_KEY_SECRET");
+
+let facilitatorKey = process.env.X402_FACILITATOR_KEY as `0x${string}` | undefined;
+if (!facilitatorKey && API_KEY && VAULT_ID) {
+    facilitatorKey = (await resolveBuyerKey({
+        apiKey: API_KEY,
+        vaultId: VAULT_ID,
+        baseUrl: BASE_URL,
+        agentId: AGENT_ID,
+        secretPath: "keys/x402-session-key",
+    })) as `0x${string}`;
+    console.log("[server] Facilitator key fetched from 1Claw vault");
+}
+
+if (!facilitatorKey) {
+    console.error("Required: X402_FACILITATOR_KEY or ONECLAW_API_KEY + ONECLAW_VAULT_ID");
     process.exit(1);
 }
 
-const CDP_HOST = "api.cdp.coinbase.com";
+const facilitatorAccount = privateKeyToAccount(facilitatorKey);
+const walletClient = createWalletClient({
+    account: facilitatorAccount,
+    chain: base,
+    transport: http(),
+});
 
-async function cdpAuthHeaders(method: string, path: string): Promise<Record<string, string>> {
-    const jwt = await generateJwt({
-        apiKeyId: CDP_KEY_ID,
-        apiKeySecret: CDP_KEY_SECRET,
-        requestMethod: method,
-        requestHost: CDP_HOST,
-        requestPath: path,
-    });
-    return { Authorization: `Bearer ${jwt}` };
-}
+const publicClient = createPublicClient({
+    chain: base,
+    transport: http(),
+});
+
+const evmSigner = {
+    ...publicClient,
+    ...walletClient,
+    address: facilitatorAccount.address,
+    getAddresses: () => [facilitatorAccount.address],
+};
+
+const facilitator = new x402Facilitator();
+facilitator.register(
+    "eip155:8453",
+    new ExactEvmFacilitatorScheme(
+        evmSigner as any,
+        { deployERC4337WithEIP6492: true },
+    ),
+);
 
 const app = express();
 
-const facilitator = new HTTPFacilitatorClient({
-    url: `https://${CDP_HOST}/platform/v2/x402`,
-    createAuthHeaders: async () => ({
-        verify: await cdpAuthHeaders("POST", "/platform/v2/x402/verify"),
-        settle: await cdpAuthHeaders("POST", "/platform/v2/x402/settle"),
-        supported: await cdpAuthHeaders("GET", "/platform/v2/x402/supported"),
-    }),
-});
-
-const server = new x402ResourceServer(facilitator).register(
+const server = new x402ResourceServer(facilitator as any).register(
     "eip155:8453",
     new ExactEvmScheme(),
 );
@@ -99,7 +126,7 @@ app.get("/", (_req, res) => {
 
 app.listen(PORT, () => {
     console.log(`\nx402 paywall server running on http://localhost:${PORT}`);
-    console.log(`Facilitator: Coinbase CDP`);
+    console.log(`Facilitator: Local (${facilitatorAccount.address})`);
     console.log(`Pay-to:      ${PAY_TO}`);
     console.log(`\ncurl http://localhost:${PORT}/joke   → 402 (use x402 client to pay)\n`);
 });

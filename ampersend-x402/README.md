@@ -4,231 +4,166 @@
 
 **Difficulty: Advanced**
 
-This example shows how [1Claw](https://1claw.xyz) (secrets + API access) and [Ampersend](https://ampersend.ai) (x402 payment authorization + wallet signing) work together so an AI agent can call paid APIs without storing payment keys in the environment.
+This example shows how [1Claw](https://1claw.xyz) (secrets management) and [Ampersend](https://ampersend.ai) (x402 smart-account payments) work together so an AI agent can call paid APIs without ever storing payment keys in the environment.
 
-When the agent hits a **402 Payment Required**, Ampersend's treasurer authorizes the payment, the smart account signs it, and the request retries automatically. The payment session key can come from an environment variable (Option A) or from a 1Claw vault (Option B).
+An x402 paywall server charges $0.001 USDC per request on Base mainnet. When the client hits **402 Payment Required**, Ampersend's SDK signs the payment through a smart account (ERC-6492), and a local facilitator settles it on-chain. The session key lives in a 1Claw vault — never in `.env`.
 
 ## What you'll learn
 
-- Wrap `fetch()` with automatic x402 payment handling
-- Connect an MCP client to 1Claw's MCP server with payment support
-- Build a hybrid billing strategy (1Claw credits first, then on-chain x402)
-- Run a standalone x402 paywall server and client
+- Run a local x402 paywall server with a facilitator that supports smart-account signatures
+- Sign payments via Ampersend's smart-account SDK (no manual EIP-1271 needed)
 - Store payment keys securely in 1Claw instead of environment variables
+- Automate vault, agent, and policy setup with the 1Claw SDK
 
 ## How 1Claw and Ampersend work together
 
 | Concern | 1Claw | Ampersend |
 |---------|-------|-----------|
-| Identity / auth for API calls | JWT from API key + agent ID | — |
-| Where the payment key lives | Vault (Option B) or env (Option A) | — |
-| Deciding whether to pay | — | AmpersendTreasurer + Ampersend API |
-| Signing the payment | — | SmartAccountWallet (session key) |
-| Who returns 402 | 1Claw API/MCP when over quota | Any x402 server |
-| Verifying payment on-chain | 1Claw uses a facilitator | Paywall uses Coinbase CDP |
+| Where the session key lives | Vault (fetched at runtime) | — |
+| Signing the payment | — | Smart account (ERC-6492 via Ampersend API) |
+| Settling on-chain | Local facilitator (EOA with gas) | — |
+| Who returns 402 | x402 paywall server | — |
 
 ## Prerequisites
 
 - Node.js 20+
 - A [1Claw account](https://1claw.xyz) with an API key, vault, and agent
-- A smart account address (for Ampersend — see [Ampersend docs](https://docs.ampersend.ai))
-- For the paywall demo: [Coinbase CDP credentials](https://portal.cdp.coinbase.com/)
-- Uses `@1claw/sdk@^0.17.0` (npm install will fetch it)
+- An [Ampersend smart account](https://docs.ampersend.ai) with a registered session key
+- ~$0.01 ETH on Base in the facilitator wallet (for gas)
+- USDC on Base in the smart account (for payments)
 
-## Quick start (MCP + x402)
-
-**Option A — Session key in `.env`:** Set `BUYER_PRIVATE_KEY` and `SMART_ACCOUNT_ADDRESS` in `.env`.
-
-**Option B — Session key in 1Claw vault:** Leave `BUYER_PRIVATE_KEY` unset and store the key in your vault at `keys/x402-session-key`. The demo fetches it at runtime.
+## Quick start
 
 ```bash
 cd examples/ampersend-x402
 npm install
 cp .env.example .env
-# Edit .env: set ONECLAW_API_KEY, ONECLAW_VAULT_ID, ONECLAW_AGENT_ID, and SMART_ACCOUNT_ADDRESS
-# For Option A only: set BUYER_PRIVATE_KEY
+# Edit .env — see below
 npm start
 ```
 
-This runs the MCP client demo: connects to 1Claw MCP, lists secrets, writes a test secret, and cleans up. If over quota, x402 payment is handled automatically (Option A or B).
-
-## Demo walkthrough (10 min)
-
-### Step 1 — Install and configure
-
-```bash
-cd examples/ampersend-x402
-npm install
-cp .env.example .env
-```
-
-Open `.env` and fill in the required credentials:
+### Required `.env` values
 
 ```env
-# 1Claw (required for all demos)
-ONECLAW_API_KEY=ocv_your_key_here
-ONECLAW_VAULT_ID=your-vault-uuid
-ONECLAW_AGENT_ID=your-agent-uuid
-
-# Wallet (Option A: key in env)
-BUYER_PRIVATE_KEY=0x_your_session_key
-SMART_ACCOUNT_ADDRESS=0x_your_smart_account
+ONECLAW_API_KEY=ocv_...          # Agent API key
+ONECLAW_VAULT_ID=...             # Vault UUID
+ONECLAW_AGENT_ID=...             # Agent UUID
+SMART_ACCOUNT_ADDRESS=0x...      # Ampersend smart account
+X402_PAY_TO_ADDRESS=0x...        # Wallet that receives USDC payments
 ```
 
-### Step 2 — Run the HTTP client demo
+The session key is fetched from the vault at `keys/x402-session-key` automatically. You can override this with `BUYER_PRIVATE_KEY` in `.env`.
+
+### Expected output
+
+```
+Starting x402 server…
+
+x402 paywall server running on http://localhost:4021
+Facilitator: Local (0x7d3...)
+Pay-to:      0x2B6...
+
+Running x402 client…
+
+=== x402 Client (Ampersend + 1Claw) ===
+
+Smart account: 0x2B623dbEA5f0C4e06444d0431a6d5167f3258Abc
+Session key:   0x7d34af134Ee5AFA0eb97F48Bec5bfbdd003F92cC
+Server:        http://localhost:4021/joke
+
+USDC on Base: 1 USDC
+
+Status: 200
+
+Response: {
+  "joke": "A SQL query walks into a bar, sees two tables, and asks… 'Can I JOIN you?'",
+  "price": "$0.001 USDC on Base",
+  "paid": true
+}
+
+Payment successful!
+```
+
+## Automated setup
+
+Use a **human** API key (`1ck_...`) from [Settings → API Keys](https://1claw.xyz/settings/api-keys) to create the vault, agent, policies, and store the session key automatically:
 
 ```bash
-npm run http
+npm run setup
+# Prompts for 1ck_ user key and session key (or generates one)
 ```
 
-This runs `src/http-with-payments.ts`, which:
-
-1. Authenticates with 1Claw (exchanges API key + agent ID for a JWT)
-2. Resolves the session key (from env or vault)
-3. Sets up Ampersend treasurer and payment-wrapped `fetch()`
-4. Calls the 1Claw API — if over quota, the 402 is handled automatically
-
-**Expected output:**
-
-```
-=== 1Claw HTTP + x402 Demo ===
-
-Authenticating with 1Claw...  ✓ JWT acquired
-Resolving session key...      ✓ Using env key (Option A)
-Setting up Ampersend...       ✓ Treasurer and wallet ready
-
-Fetching secrets from vault...
-  Status: 200
-  Secrets: [demo/api-key (api_key, v1)]
-```
-
-### Step 3 — Run the MCP client demo
-
-```bash
-npm start
-```
-
-This runs `src/mcp-with-payments.ts`, which connects to the hosted 1Claw MCP server with automatic x402 payment handling on every tool call.
-
-### Step 4 — Run the hybrid billing demo
-
-```bash
-npm run hybrid
-```
-
-This runs `src/custom-treasurer.ts`, which checks your 1Claw **prepaid credit balance** first. If credits are sufficient, it uses them. If not, it delegates to Ampersend for on-chain payment.
-
-### Step 5 — (Optional) Run the paywall server + client
-
-In one terminal:
-
-```bash
-npm run server    # Paywall on :4021
-```
-
-In another terminal:
-
-```bash
-npm run client    # Pays $0.001 USDC and gets a joke
-```
-
-The server returns 402 on `/protected/joke`. The client pays via x402 and gets the content.
+The script is idempotent: it creates or reuses a vault `ampersend-x402-demo` and agent `ampersend-x402-agent`, grants read on `keys/**`, stores the session key, and prints a `.env` block.
 
 ## Scripts
 
 | Command | Script | Description |
 |---------|--------|-------------|
-| `npm run http` | `src/http-with-payments.ts` | HTTP client with 1Claw API + x402 |
-| `npm start` | `src/mcp-with-payments.ts` | MCP client with 1Claw MCP + x402 |
-| `npm run hybrid` | `src/custom-treasurer.ts` | Hybrid: 1Claw credits then on-chain x402 |
-| `npm run server` | `src/x402-server.ts` | Standalone paywall ($0.001 USDC, CDP) |
-| `npm run client` | `src/x402-client.ts` | Paywall client (x402 v2, smart account) |
+| `npm start` | `src/run-paywall-demo.ts` | Start server + client end-to-end |
+| `npm run paywall` | `src/run-paywall-demo.ts` | Same as `npm start` |
+| `npm run server` | `src/x402-server.ts` | Start the paywall server only |
+| `npm run client` | `src/x402-client.ts` | Run the payment client only |
+| `npm run setup` | `src/setup-ampersend.ts` | One-time vault/agent/policy setup |
+
+## Architecture
+
+```
+x402-server.ts          x402-client.ts
+┌──────────────┐        ┌──────────────────────┐
+│ Express app  │        │ Ampersend SDK        │
+│ + paywall    │◄──────►│ (smart account sign) │
+│ middleware   │  402   │                      │
+│              │◄──────►│ @x402/fetch          │
+│ Local x402   │ pay +  │ (payment retry)      │
+│ facilitator  │ verify │                      │
+│ (on-chain    │        │ resolve-buyer-key.ts │
+│  settlement) │        │ (1Claw vault fetch)  │
+└──────────────┘        └──────────────────────┘
+       │                         │
+       ▼                         ▼
+   Base mainnet             1Claw Vault
+   (USDC transfer)       (session key)
+```
+
+### Payment flow
+
+1. Client GETs `/joke` → server returns **402 Payment Required**
+2. Ampersend SDK calls its API to authorize the payment
+3. Smart account signs `transferWithAuthorization` (ERC-6492 signature)
+4. Client retries with `payment-signature` header
+5. Local facilitator verifies the signature and settles on-chain
+6. Server returns the joke (200 OK)
 
 ## Environment variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `ONECLAW_API_KEY` | Yes | 1Claw API key (`ocv_...`) |
+| `ONECLAW_API_KEY` | Yes | Agent API key (`ocv_...`) |
 | `ONECLAW_VAULT_ID` | Yes | Vault UUID |
-| `ONECLAW_AGENT_ID` | MCP | Agent UUID (required for MCP, optional for HTTP) |
-| `BUYER_PRIVATE_KEY` | Yes* | Session key (`0x...`). *Omit for Option B (key from vault).* |
-| `SMART_ACCOUNT_ADDRESS` | Yes* | Smart account address. *Required for HTTP, MCP, hybrid.* |
-| `ONECLAW_BASE_URL` | No | API URL (default: `https://api.1claw.xyz`) |
-| `BUYER_KEY_PATH` | No | Vault path for session key in Option B (default: `keys/x402-session-key`) |
-| `CDP_API_KEY_ID` | Server | Coinbase CDP key ID |
-| `CDP_API_KEY_SECRET` | Server | Coinbase CDP key secret |
-| `X402_PAY_TO_ADDRESS` | Server | Recipient address for paywall payments |
+| `ONECLAW_AGENT_ID` | Yes | Agent UUID |
+| `SMART_ACCOUNT_ADDRESS` | Yes | Ampersend smart account address |
+| `X402_PAY_TO_ADDRESS` | Yes | Wallet receiving USDC payments |
+| `BUYER_PRIVATE_KEY` | No | Session key (`0x...`); if unset, fetched from vault |
+| `BUYER_KEY_PATH` | No | Vault path for session key (default: `keys/x402-session-key`) |
+| `X402_FACILITATOR_KEY` | No | Facilitator EOA key; if unset, uses session key from vault |
+| `AMPERSEND_API_URL` | No | Ampersend API (default: `https://api.ampersend.ai`) |
+| `ONECLAW_BASE_URL` | No | 1Claw API URL (default: `https://api.1claw.xyz`) |
+| `X402_SERVER_PORT` | No | Paywall server port (default: `4021`) |
+| `X402_CLIENT_DEBUG` | No | Set to `1` for verbose x402 fetch logging |
 
-## How it works
+## Debugging
 
-```
-Your App                         1Claw API                    Ampersend
-   │                                │                            │
-   │  POST /v1/auth/agent-token     │                            │
-   │ ──────────────────────────────►│                            │
-   │ ◄────────────────────────────── JWT                        │
-   │                                │                            │
-   │  GET /v1/vaults/{id}/secrets   │                            │
-   │ ──────────────────────────────►│                            │
-   │ ◄────────────────────────────── 402 Payment Required       │
-   │                                │                            │
-   │  treasurer.onPaymentRequired() │                            │
-   │ ──────────────────────────────────────────────────────────►│
-   │     Ampersend API: authorize?   │                           │
-   │     SmartAccountWallet: sign    │                           │
-   │ ◄──────────────────────────────────────────────────────────│
-   │     Authorization { payment }   │                           │
-   │                                │                            │
-   │  GET /v1/vaults/{id}/secrets   │                            │
-   │  + X-Payment header            │                            │
-   │ ──────────────────────────────►│                            │
-   │ ◄────────────────────────────── 200 OK                     │
-```
+Set `X402_CLIENT_DEBUG=1` to log every fetch, decode `PAYMENT-REQUIRED` and `payment-signature` headers, and show facilitator verify/settle responses.
 
-## Key code patterns
-
-**Authenticate and resolve session key:**
-
-```typescript
-import { createClient } from "@1claw/sdk";
-import { resolveBuyerKey } from "./resolve-buyer-key.js";
-
-const sdk = createClient({ baseUrl: "https://api.1claw.xyz" });
-await sdk.auth.agentToken({ api_key: API_KEY, agent_id: AGENT_ID });
-
-const sessionKey = await resolveBuyerKey({
-  apiKey: API_KEY, vaultId: VAULT_ID,
-  baseUrl: "https://api.1claw.xyz",
-});
-```
-
-**Set up payment-wrapped fetch:**
-
-```typescript
-import { createAmpersendTreasurer, wrapWithAmpersend } from "@ampersend_ai/ampersend-sdk";
-import { x402Client } from "@x402/core/client";
-import { wrapFetchWithPayment } from "@x402/fetch";
-
-const treasurer = createAmpersendTreasurer({
-  smartAccountAddress: "0x...",
-  sessionKeyPrivateKey: sessionKey,
-  chainId: 8453,
-});
-const client = new x402Client();
-wrapWithAmpersend(client, treasurer, ["base"]);
-const paymentFetch = wrapFetchWithPayment(fetch, client);
-
-// Now every 402 is handled automatically
-const res = await paymentFetch("https://api.1claw.xyz/v1/vaults/.../secrets", {
-  headers: { Authorization: `Bearer ${jwt}` },
-});
+```bash
+X402_CLIENT_DEBUG=1 npm start
 ```
 
 ## Wallet safety
 
 - Use a **session key** for x402, not your main wallet
 - Fund the smart account only with what you need for testing
-- AmpersendTreasurer enforces spending limits via the Ampersend Platform
+- The facilitator wallet only needs ETH for gas — it never holds user funds
 
 ## Next steps
 

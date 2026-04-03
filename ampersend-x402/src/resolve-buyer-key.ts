@@ -18,6 +18,7 @@ interface ResolveOptions {
     vaultId: string;
     baseUrl: string;
     agentId?: string;
+    secretPath?: string;
 }
 
 export async function resolveBuyerKey(opts: ResolveOptions): Promise<Hex> {
@@ -28,7 +29,7 @@ export async function resolveBuyerKey(opts: ResolveOptions): Promise<Hex> {
     }
 
     const keyPath =
-        process.env.BUYER_KEY_PATH ?? "keys/x402-session-key";
+        opts.secretPath ?? process.env.BUYER_KEY_PATH ?? "keys/x402-session-key";
 
     console.log(
         `[bootstrap] BUYER_PRIVATE_KEY not set — fetching from 1Claw vault at "${keyPath}"`,

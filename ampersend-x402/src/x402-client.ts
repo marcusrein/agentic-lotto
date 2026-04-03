@@ -1,30 +1,46 @@
 /**
- * x402 client — pays $0.001 USDC on Base to access the paywall server.
+ * x402 client — pays USDC on Base to access a paid endpoint.
  *
- * Uses a smart account (ERC-1271) with a session key for signing.
- * Session key: BUYER_PRIVATE_KEY in env, or fetched from 1Claw (Option B).
+ * Uses `createAmpersendHttpClient` from the Ampersend SDK, which handles
+ * smart-account signing through Ampersend's API (no manual EIP-1271 needed).
+ *
+ * Session key: BUYER_PRIVATE_KEY env var, or fetched from 1Claw vault.
+ *
+ * Targets:
+ *   - Ampersend hosted:  https://services.ampersend.ai/api/joke  (default)
+ *   - Local server:      http://localhost:4021/joke  (set X402_SERVER_URL)
+ *
+ * Debug: X402_CLIENT_DEBUG=1 npm run client
  *
  * Run:  npm run client
- * (start x402-server.ts first with `npm run server`)
  */
 
-import { x402Client } from "@x402/core/client";
-import { registerExactEvmScheme } from "@x402/evm/exact/client";
-import { toClientEvmSigner, type ClientEvmSigner } from "@x402/evm";
+import { createAmpersendHttpClient } from "@ampersend_ai/ampersend-sdk";
 import { wrapFetchWithPayment } from "@x402/fetch";
 import { privateKeyToAccount } from "viem/accounts";
-import { createPublicClient, http } from "viem";
+import { createPublicClient, formatUnits, http } from "viem";
 import { base } from "viem/chains";
 import {
-    encode1271Signature,
-    getAccount,
-    getOwnableValidatorSignature,
-} from "@rhinestone/module-sdk";
-import { OWNABLE_VALIDATOR } from "@ampersend_ai/ampersend-sdk/smart-account";
+    isX402ClientDebugEnabled,
+    wrapX402DebugFetch,
+} from "./debug-x402-fetch.js";
 import { resolveBuyerKey } from "./resolve-buyer-key.js";
 
+const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
+
+const erc20BalanceAbi = [
+    {
+        name: "balanceOf",
+        type: "function",
+        stateMutability: "view",
+        inputs: [{ name: "account", type: "address" }],
+        outputs: [{ type: "uint256" }],
+    },
+] as const;
+
 const SMART_ACCOUNT = process.env.SMART_ACCOUNT_ADDRESS as `0x${string}`;
-const SERVER_URL = process.env.X402_SERVER_URL ?? "http://localhost:4021";
+const AMPERSEND_JOKE_URL = "https://services.ampersend.ai/api/joke";
+const SERVER_URL = process.env.X402_SERVER_URL ?? AMPERSEND_JOKE_URL;
 
 if (!SMART_ACCOUNT) {
     console.error("Required: SMART_ACCOUNT_ADDRESS");
@@ -37,7 +53,7 @@ const BASE_URL = process.env.ONECLAW_BASE_URL ?? "https://api.1claw.xyz";
 const AGENT_ID = process.env.ONECLAW_AGENT_ID;
 
 if (!API_KEY || !VAULT_ID) {
-    console.error("Required: ONECLAW_API_KEY, ONECLAW_VAULT_ID (for key bootstrap or Option B)");
+    console.error("Required: ONECLAW_API_KEY, ONECLAW_VAULT_ID");
     process.exit(1);
 }
 
@@ -50,52 +66,77 @@ const SESSION_KEY = (await resolveBuyerKey({
 
 const sessionKeyAccount = privateKeyToAccount(SESSION_KEY);
 
+const ampersendClient = createAmpersendHttpClient({
+    smartAccountAddress: SMART_ACCOUNT,
+    sessionKeyPrivateKey: SESSION_KEY,
+    apiUrl: process.env.AMPERSEND_API_URL?.trim() || "https://api.ampersend.ai",
+    network: "base",
+});
+
+const baseFetch = wrapX402DebugFetch(fetch);
+const paymentFetch = wrapFetchWithPayment(baseFetch, ampersendClient);
+
 const publicClient = createPublicClient({
     chain: base,
     transport: http(),
 });
 
-/**
- * ERC-1271 signer: signs typed data with the session key, then wraps
- * the signature for the smart account's OwnableValidator module.
- */
-const smartAccountSigner: Omit<ClientEvmSigner, "readContract"> = {
-    address: SMART_ACCOUNT,
-    async signTypedData(params) {
-        const eoaSig = await sessionKeyAccount.signTypedData(params as Parameters<typeof sessionKeyAccount.signTypedData>[0]);
-        const validatorSig = getOwnableValidatorSignature({
-            signatures: [eoaSig],
-        });
-        return encode1271Signature({
-            account: getAccount({ address: SMART_ACCOUNT, type: "safe" }),
-            validator: OWNABLE_VALIDATOR,
-            signature: validatorSig,
-        });
-    },
-};
-
-const signer = toClientEvmSigner(smartAccountSigner, publicClient);
-
-const client = new x402Client();
-registerExactEvmScheme(client, { signer });
-const paymentFetch = wrapFetchWithPayment(fetch, client);
-
-console.log("=== x402 Client (Smart Account) ===\n");
+if (isX402ClientDebugEnabled()) {
+    console.log(
+        "[x402 debug] X402_CLIENT_DEBUG=1 — logging fetch traffic.\n",
+    );
+}
+console.log("=== x402 Client (Ampersend + 1Claw) ===\n");
 console.log(`Smart account: ${SMART_ACCOUNT}`);
 console.log(`Session key:   ${sessionKeyAccount.address}`);
 console.log(`Server:        ${SERVER_URL}`);
-console.log(`\nRequesting /joke ($0.001 USDC on Base)...\n`);
+console.log(
+    `Ampersend API: ${process.env.AMPERSEND_API_URL?.trim() || "https://api.ampersend.ai"}`,
+);
 
-const res = await paymentFetch(`${SERVER_URL}/joke`);
+let usdcBalance = 0n;
+try {
+    usdcBalance = await publicClient.readContract({
+        address: USDC_BASE,
+        abi: erc20BalanceAbi,
+        functionName: "balanceOf",
+        args: [SMART_ACCOUNT],
+    });
+} catch {
+    console.warn("(Could not read USDC balance; continuing.)");
+}
+const usdcHuman = formatUnits(usdcBalance, 6);
+console.log(`\nUSDC on Base: ${usdcHuman} USDC`);
+
+if (usdcBalance < 1_000n) {
+    console.warn(
+        "\nThis demo needs >= 0.001 USDC in the smart account.\n",
+    );
+}
+
+console.log(`\nRequesting ${SERVER_URL} ...\n`);
+
+let res: Response;
+try {
+    res = await paymentFetch(SERVER_URL);
+} catch (e) {
+    console.error(
+        "\nPayment fetch threw:",
+        e instanceof Error ? e.message : e,
+    );
+    process.exit(1);
+}
 
 console.log(`Status: ${res.status}`);
 
 if (res.ok) {
     const data = await res.json();
     console.log(`\nResponse:`, JSON.stringify(data, null, 2));
-} else {
-    const text = await res.text();
-    console.log(`\nError: ${text}`);
+    console.log("\nPayment successful!");
+    process.exit(0);
 }
 
-console.log("\nDone.");
+const text = await res.text();
+const detail = text?.trim() ? text : "(empty body)";
+console.log(`\nError (${res.status}): ${detail}`);
+process.exit(1);
