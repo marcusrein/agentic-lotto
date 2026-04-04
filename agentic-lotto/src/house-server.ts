@@ -99,7 +99,10 @@ export async function startHouseServer(
         },
     };
 
-    app.use(paymentMiddleware(routes, server));
+    // In dry-run mode, skip the x402 payment middleware so agents can POST without payment
+    if (!config.dryRun) {
+        app.use(paymentMiddleware(routes, server));
+    }
 
     // ── Paid endpoint: buy ticket ──
     app.post("/buy-ticket", (req, res) => {
