@@ -76,9 +76,10 @@ const ampersendClient = createAmpersendHttpClient({
 const baseFetch = wrapX402DebugFetch(fetch);
 const paymentFetch = wrapFetchWithPayment(baseFetch, ampersendClient);
 
+const baseRpcUrl = process.env.BASE_RPC_URL?.trim();
 const publicClient = createPublicClient({
     chain: base,
-    transport: http(),
+    transport: baseRpcUrl ? http(baseRpcUrl) : http(),
 });
 
 if (isX402ClientDebugEnabled()) {
@@ -102,8 +103,13 @@ try {
         functionName: "balanceOf",
         args: [SMART_ACCOUNT],
     });
-} catch {
-    console.warn("(Could not read USDC balance; continuing.)");
+} catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    console.warn(
+        `(Could not read USDC balance; showing 0 — RPC call failed.)\n` +
+            `  ${detail}\n` +
+            `  Set BASE_RPC_URL in .env to a Base mainnet HTTPS RPC if this persists.`,
+    );
 }
 const usdcHuman = formatUnits(usdcBalance, 6);
 console.log(`\nUSDC on Base: ${usdcHuman} USDC`);

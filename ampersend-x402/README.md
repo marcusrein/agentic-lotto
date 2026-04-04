@@ -159,6 +159,8 @@ Set `X402_CLIENT_DEBUG=1` to log every fetch, decode `PAYMENT-REQUIRED` and `pay
 X402_CLIENT_DEBUG=1 npm start
 ```
 
+If `PAYMENT-RESPONSE` shows `invalid_exact_evm_transaction_failed` with an empty `transaction`, the facilitator EOA (printed at startup as `Facilitator: Local (0x…)`) usually **ran out of Base ETH for gas** or could not submit the settle tx. Fund that address with ETH on Base. **USDC on the payer smart account does not pay facilitator gas.** On startup the server warns when facilitator ETH is zero or very low.
+
 ## Wallet safety
 
 - Use a **session key** for x402, not your main wallet
