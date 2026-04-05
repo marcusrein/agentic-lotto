@@ -20,6 +20,7 @@ Twelve example applications demonstrating the [1Claw](https://1claw.xyz) SDK, AP
 | [shroud-security](./shroud-security/)         | Intermediate | 5 min  | Shroud threat detection: Unicode, command injection, social engineering, encoding, network |
 | [ampersend-x402](./ampersend-x402/)           | Advanced     | 10 min | x402 micropayments via Ampersend — MCP/HTTP clients, hybrid billing, paywall server        |
 | [x402-payments](./x402-payments/)             | Advanced     | 5 min  | Real x402 payments for 1Claw endpoints — EOA key in .env, GET/PUT secrets, audit, simulate |
+| [agentic-lotto](./agentic-lotto/)             | Advanced     | 15 min | Multi-agent lottery — 3 agents buy tickets via x402, SocioLogic RNG draws winner, USDC payout on Base |
 
 **Shroud LLM:** Examples that hit Shroud’s OpenAI-compatible surface (`shroud-demo`, `shroud-llm`) must send **`X-Shroud-Provider`** (e.g. `openai`, `anthropic`, `google`) on chat requests; omitting it returns **400** from Shroud.
 

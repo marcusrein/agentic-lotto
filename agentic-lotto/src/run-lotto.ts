@@ -49,9 +49,11 @@ async function runRound(config: LottoConfig, houseKey: Hex): Promise<void> {
     // ── Buy phase ──
     console.log(`\n[round] Buy window open (${config.house.buyWindowSeconds}s)...\n`);
 
-    const decisions = await Promise.all(
-        config.agents.map((agent, i) => runAgent(agent, agentKeys[i], config)),
-    );
+    // Run agents sequentially — concurrent x402 payments race on facilitator settlement
+    const decisions = [];
+    for (let i = 0; i < config.agents.length; i++) {
+        decisions.push(await runAgent(config.agents[i], agentKeys[i], config));
+    }
 
     // Log decisions
     console.log("\n[round] Agent decisions:");

@@ -11,7 +11,7 @@
         "start": "npx tsx --env-file=.env src/run-lotto.ts",
         "start:dry": "npx tsx --env-file=.env src/run-lotto.ts --dry-run",
         "server": "npx tsx --env-file=.env src/house-server.ts",
-        "setup": "npx tsx src/setup-lotto.ts"
+        "setup": "npx tsx --env-file=.env src/setup-lotto.ts"
     },
     "dependencies": {
         "@1claw/sdk": "^0.16.0",
