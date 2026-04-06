@@ -1,76 +1,57 @@
-import {
-    createWalletClient,
-    createPublicClient,
-    http,
-} from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { base } from "viem/chains";
-import type { Hex, Address } from "viem";
-import { USDC_BASE } from "./types.js";
+import { initiateDeveloperControlledWalletsClient } from "@circle-fin/developer-controlled-wallets";
+import type { CircleConfig } from "./types.js";
+import type { Address } from "viem";
 
-const transferAbi = [
-    {
-        name: "transfer",
-        type: "function",
-        stateMutability: "nonpayable",
-        inputs: [
-            { name: "to", type: "address" },
-            { name: "amount", type: "uint256" },
-        ],
-        outputs: [{ type: "bool" }],
-    },
-] as const;
+// USDC token ID on Base mainnet — from Circle's monitored tokens registry
+// https://developers.circle.com/w3s/developer-controlled-wallets/monitored-tokens
+const USDC_BASE_TOKEN_ID = "fbd4cda4-0783-55c1-a947-7a29cf553de3";
 
 export async function payoutWinner(
-    facilitatorKey: Hex,
+    circleConfig: CircleConfig,
     winnerAddress: Address,
     amountCents: number,
     dryRun: boolean,
 ): Promise<string | null> {
-    // amountCents is in USDC cents; USDC has 6 decimals.
-    // 1 cent = 0.01 USDC = 10_000 units (10^4)
-    const amountUnits = BigInt(amountCents) * 10_000n;
+    const amountUsdc = (amountCents / 100).toFixed(2);
 
     console.log(
-        `[payout] Sending $${(amountCents / 100).toFixed(3)} USDC to ${winnerAddress}`,
+        `[payout] Sending $${amountUsdc} USDC to ${winnerAddress} via Circle`,
     );
 
     if (dryRun) {
-        console.log(`[payout] Dry-run: skipping on-chain transfer.`);
+        console.log(`[payout] Dry-run: skipping Circle transfer.`);
         return "0xdryrun";
     }
 
-    const account = privateKeyToAccount(facilitatorKey);
-    const baseTransport = process.env.BASE_RPC_URL?.trim()
-        ? http(process.env.BASE_RPC_URL.trim())
-        : http();
-
-    const walletClient = createWalletClient({
-        account,
-        chain: base,
-        transport: baseTransport,
+    const circleSdk = initiateDeveloperControlledWalletsClient({
+        apiKey: circleConfig.apiKey,
+        entitySecret: circleConfig.entitySecret,
     });
 
-    const publicClient = createPublicClient({
-        chain: base,
-        transport: baseTransport,
+    const response = await circleSdk.createTransaction({
+        walletId: circleConfig.walletId,
+        tokenId: USDC_BASE_TOKEN_ID,
+        destinationAddress: winnerAddress,
+        amount: [amountUsdc],
+        fee: {
+            type: "level",
+            config: {
+                feeLevel: "MEDIUM",
+            },
+        },
     });
 
-    const txHash = await walletClient.writeContract({
-        address: USDC_BASE,
-        abi: transferAbi,
-        functionName: "transfer",
-        args: [winnerAddress, amountUnits],
-    });
-
-    console.log(`[payout] USDC transfer tx: ${txHash}`);
-
-    // Wait for confirmation
-    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-    if (receipt.status === "reverted") {
-        throw new Error(`[payout] Transaction reverted: ${txHash}`);
+    const txData = response.data;
+    if (!txData) {
+        throw new Error(`[payout] Circle createTransaction returned no transaction data`);
     }
 
-    console.log(`[payout] Confirmed in block ${receipt.blockNumber}`);
-    return txHash;
+    console.log(`[payout] Circle transaction id: ${txData.id}`);
+    console.log(`[payout] Circle transaction state: ${txData.state}`);
+
+    // txHash is not immediately available — Circle processes async.
+    // Return the Circle transaction ID as the reference.
+    console.log(`[payout] tx reference: ${txData.id}`);
+
+    return txData.id;
 }
