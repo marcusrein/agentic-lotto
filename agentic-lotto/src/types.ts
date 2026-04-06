@@ -16,6 +16,13 @@ export interface HouseConfig {
     sessionKeyPath: string;
 }
 
+export interface CircleConfig {
+    apiKey: string;
+    entitySecret: string;
+    walletId: string;
+    walletAddress: Address;
+}
+
 export interface LottoConfig {
     house: HouseConfig;
     agents: AgentPersonality[];
@@ -27,6 +34,7 @@ export interface LottoConfig {
         baseUrl: string;
         agentId?: string;
     };
+    circle: CircleConfig;
     dryRun: boolean;
 }
 

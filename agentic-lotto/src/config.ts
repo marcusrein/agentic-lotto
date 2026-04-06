@@ -1,4 +1,4 @@
-import type { LottoConfig, AgentPersonality } from "./types.js";
+import type { LottoConfig, AgentPersonality, CircleConfig } from "./types.js";
 import type { Address } from "viem";
 
 function reqEnv(key: string): string {
@@ -42,6 +42,13 @@ export function loadConfig(): LottoConfig {
         console.log("[config] Dry-run mode: no real payments, local RNG.\n");
     }
 
+    const circle: CircleConfig = {
+        apiKey: reqEnv("CIRCLE_API_KEY"),
+        entitySecret: reqEnv("CIRCLE_ENTITY_SECRET"),
+        walletId: reqEnv("CIRCLE_WALLET_ID"),
+        walletAddress: reqEnv("CIRCLE_WALLET_ADDRESS") as Address,
+    };
+
     return {
         house: {
             port: Number(optEnv("LOTTO_SERVER_PORT", "4022")),
@@ -61,6 +68,7 @@ export function loadConfig(): LottoConfig {
             baseUrl: optEnv("ONECLAW_BASE_URL", "https://api.1claw.xyz"),
             agentId: process.env.ONECLAW_AGENT_ID?.trim(),
         },
+        circle,
         dryRun,
     };
 }
