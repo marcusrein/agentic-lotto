@@ -39,8 +39,9 @@ export async function startHouseServer(
     facilitatorKey: Hex,
 ): Promise<{ close: () => void }> {
     const facilitatorAccount = privateKeyToAccount(facilitatorKey);
-    // payTo = facilitator EOA so ticket USDC and gas wallet are the same address
-    const payTo = facilitatorAccount.address;
+    // payTo = Circle wallet address (ticket USDC goes to Circle-managed treasury)
+    // Falls back to facilitator EOA if no Circle wallet configured
+    const payTo = config.circle.walletAddress ?? facilitatorAccount.address;
 
     const baseTransport = process.env.BASE_RPC_URL?.trim()
         ? http(process.env.BASE_RPC_URL.trim())
@@ -172,7 +173,8 @@ export async function startHouseServer(
     return new Promise((resolve) => {
         const httpServer = app.listen(config.house.port, () => {
             console.log(`\n[house] Lotto server running on http://localhost:${config.house.port}`);
-            console.log(`[house] Facilitator / payTo: ${payTo}`);
+            console.log(`[house] Facilitator (x402 settlement): ${facilitatorAccount.address}`);
+            console.log(`[house] Treasury (payTo / Circle wallet): ${payTo}`);
             console.log(`[house] Ticket price: ${priceDollar} USDC on Base`);
             console.log(`[house] Buy window: ${config.house.buyWindowSeconds}s\n`);
             resolve({
