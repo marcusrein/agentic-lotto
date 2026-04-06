@@ -34,13 +34,14 @@ An agent plays if `ticketPrice < riskTolerance * balance` and `balance >= minBal
 
 ### Payout architecture
 
-Ampersend SDK is pull-based only (x402 payment flow) — no programmatic send/transfer API. Payout uses a direct viem USDC `transfer()` from the facilitator EOA, which is also the `payTo` address for ticket payments. This means ticket revenue and gas funds live in the same wallet.
+Ticket payments flow to the Circle-managed wallet (set as x402 `payTo`). When a winner is drawn, the house calls Circle's Programmable Wallets `createTransaction()` API to send the prize USDC. The facilitator EOA still handles x402 payment settlement (it needs ETH for gas), but prize funds live in the Circle wallet — cleanly separating settlement infrastructure from the prize pool.
 
 ## Prerequisites
 
 - Node.js >= 20
 - [1Claw](https://1claw.xyz) account with vault + agent API key
 - [Ampersend](https://ampersend.ai) account with 4 agents (house + 3 players)
+- [Circle](https://console.circle.com) developer account with API key, entity secret, and a Base wallet
 - USDC on Base (< $5 total for many rounds)
 - Small amount of ETH on Base for facilitator gas (~$0.01)
 
@@ -85,6 +86,25 @@ The facilitator EOA (derived from the house session key) needs USDC for payouts 
 
 Fill in all `AGENT_*_SMART_ACCOUNT_ADDRESS` values and `HOUSE_SMART_ACCOUNT_ADDRESS`.
 
+### 5. Set up Circle Programmable Wallet (for payouts)
+
+1. Create a developer account at [console.circle.com](https://console.circle.com)
+2. Go to **API Keys** and create an API key
+3. Generate a 32-byte entity secret and register it in the console
+4. Create a **wallet set**, then create a **wallet** on the `BASE` blockchain
+5. Note the **wallet ID** (UUID) and **wallet address** (0x...)
+6. Fund the wallet with ~$1 USDC on Base
+7. Add to `.env`:
+
+```env
+CIRCLE_API_KEY=your_api_key
+CIRCLE_ENTITY_SECRET=your_entity_secret
+CIRCLE_WALLET_ID=your_wallet_uuid
+CIRCLE_WALLET_ADDRESS=0x_your_wallet_address
+```
+
+The Circle wallet receives ticket payments (via x402 `payTo`) and sends prize payouts via Circle's transfer API. The facilitator EOA still handles x402 settlement and needs ETH for gas, but no longer holds the prize pool.
+
 ## Run
 
 ```bash
@@ -127,6 +147,7 @@ npm run start:dry
 | Agent wallets | `@ampersend_ai/ampersend-sdk` | Each agent has a smart account with session keys |
 | Secret management | `@1claw/sdk` | Session keys fetched from vault at runtime |
 | Randomness | SocioLogic (`rng.sociologic.ai`) | x402-paid verifiable RNG |
+| Payout | `@circle-fin/developer-controlled-wallets` | Winner receives USDC via Circle transfer API |
 | Server | Express + `@x402/express` | House server with payment middleware |
 | Chain | Base mainnet | USDC payments and transfers |
 
