@@ -51,7 +51,5 @@ export async function payoutWinner(
 
     // txHash is not immediately available — Circle processes async.
     // Return the Circle transaction ID as the reference.
-    console.log(`[payout] tx reference: ${txData.id}`);
-
     return txData.id;
 }

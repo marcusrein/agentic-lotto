@@ -40,8 +40,10 @@ export async function startHouseServer(
 ): Promise<{ close: () => void }> {
     const facilitatorAccount = privateKeyToAccount(facilitatorKey);
     // payTo = Circle wallet address (ticket USDC goes to Circle-managed treasury)
-    // Falls back to facilitator EOA if no Circle wallet configured
-    const payTo = config.circle.walletAddress ?? facilitatorAccount.address;
+    // In dry-run the Circle wallet address is a placeholder — fall back to facilitator
+    const payTo = config.circle.walletAddress && config.circle.walletAddress !== "0x0"
+        ? config.circle.walletAddress
+        : facilitatorAccount.address;
 
     const baseTransport = process.env.BASE_RPC_URL?.trim()
         ? http(process.env.BASE_RPC_URL.trim())
