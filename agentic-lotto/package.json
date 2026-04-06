@@ -9,6 +9,7 @@
     },
     "scripts": {
         "start": "npx tsx --env-file=.env src/run-lotto.ts",
+        "start:multi": "npx tsx --env-file=.env src/run-lotto.ts --rounds 10 --delay 10",
         "start:dry": "npx tsx --env-file=.env src/run-lotto.ts --dry-run",
         "server": "npx tsx --env-file=.env src/house-server.ts",
         "setup": "npx tsx --env-file=.env src/setup-lotto.ts"
@@ -16,6 +17,7 @@
     "dependencies": {
         "@1claw/sdk": "^0.16.0",
         "@ampersend_ai/ampersend-sdk": "^0.0.16",
+        "@circle-fin/developer-controlled-wallets": "^10.2.0",
         "@x402/core": "^2.9.0",
         "@x402/evm": "^2.9.0",
         "@x402/express": "^2.9.0",
