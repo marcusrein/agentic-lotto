@@ -8,8 +8,24 @@ import { payoutWinner } from "./payout.js";
 import type { RoundResult, LottoConfig } from "./types.js";
 import type { Hex } from "viem";
 
+function parseRounds(): number {
+    const idx = process.argv.indexOf("--rounds");
+    if (idx === -1) return 1;
+    const n = Number(process.argv[idx + 1]);
+    return Number.isFinite(n) && n > 0 ? n : 1;
+}
+
+function parseDelay(): number {
+    const idx = process.argv.indexOf("--delay");
+    if (idx === -1) return 10;
+    const n = Number(process.argv[idx + 1]);
+    return Number.isFinite(n) && n >= 0 ? n : 10;
+}
+
 async function main() {
     const config = loadConfig();
+    const totalRounds = parseRounds();
+    const delaySec = parseDelay();
 
     // ── Resolve house session key ──
     const houseKey = await resolveKey({
@@ -18,24 +34,8 @@ async function main() {
         label: "house",
     });
 
-    // ── Start house server ──
-    const house = await startHouseServer(config, houseKey);
-
-    try {
-        await runRound(config, houseKey);
-    } finally {
-        house.close();
-    }
-}
-
-async function runRound(config: LottoConfig, houseKey: Hex): Promise<void> {
-    const roundId = randomUUID().slice(0, 8);
-    console.log(`\n${"=".repeat(50)}`);
-    console.log(`  ROUND ${roundId}`);
-    console.log(`${"=".repeat(50)}\n`);
-
-    // ── Resolve all agent keys ──
-    console.log("[round] Resolving agent session keys...\n");
+    // ── Resolve all agent keys once ──
+    console.log("[main] Resolving agent session keys...\n");
     const agentKeys: Hex[] = [];
     for (const agent of config.agents) {
         const key = await resolveKey({
@@ -46,11 +46,39 @@ async function runRound(config: LottoConfig, houseKey: Hex): Promise<void> {
         agentKeys.push(key);
     }
 
+    // ── Start house server ──
+    const house = await startHouseServer(config, houseKey);
+
+    try {
+        for (let i = 1; i <= totalRounds; i++) {
+            if (totalRounds > 1) {
+                console.log(`\n╔══════════════════════════════════════════════════╗`);
+                console.log(`║  GAME ${i} of ${totalRounds}`);
+                console.log(`╚══════════════════════════════════════════════════╝`);
+            }
+            await runRound(config, houseKey, agentKeys);
+
+            if (i < totalRounds) {
+                console.log(`[main] Next round in ${delaySec}s...\n`);
+                await new Promise((r) => setTimeout(r, delaySec * 1000));
+            }
+        }
+    } finally {
+        house.close();
+    }
+}
+
+async function runRound(config: LottoConfig, houseKey: Hex, agentKeys: Hex[]): Promise<void> {
+    const roundId = randomUUID().slice(0, 8);
+    console.log(`\n${"=".repeat(50)}`);
+    console.log(`  ROUND ${roundId}`);
+    console.log(`${"=".repeat(50)}\n`);
+
     // ── Buy phase ──
     console.log(`\n[round] Buy window open (${config.house.buyWindowSeconds}s)...\n`);
 
     // Run agents sequentially — concurrent x402 payments race on facilitator settlement
-    const decisions = [];
+    const decisions: Awaited<ReturnType<typeof runAgent>>[] = [];
     for (let i = 0; i < config.agents.length; i++) {
         decisions.push(await runAgent(config.agents[i], agentKeys[i], config));
     }
@@ -94,7 +122,7 @@ async function runRound(config: LottoConfig, houseKey: Hex): Promise<void> {
         // ── Payout phase ──
         console.log("");
         const txHash = await payoutWinner(
-            houseKey,
+            config.circle,
             draw.winner.smartAccountAddress,
             prizeCents,
             config.dryRun,
