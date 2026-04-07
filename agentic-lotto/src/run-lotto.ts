@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { loadConfig } from "./config.js";
-import { resolveKey } from "./resolve-key.js";
+import { resolveKey, resolveSecret } from "./resolve-key.js";
 import { startHouseServer, getPlayers, closeRound, resetRound } from "./house-server.js";
 import { runAgent } from "./agent.js";
 import { drawWinner } from "./draw.js";
@@ -44,6 +44,15 @@ async function main() {
             label: agent.name,
         });
         agentKeys.push(key);
+    }
+
+    // ── Resolve Circle entity secret from 1Claw (if not in env) ──
+    if (!config.dryRun && !config.circle.entitySecret && config.circle.entitySecretPath) {
+        config.circle.entitySecret = await resolveSecret({
+            ...config.oneclaw,
+            secretPath: config.circle.entitySecretPath,
+            label: "circle",
+        });
     }
 
     // ── Start house server ──

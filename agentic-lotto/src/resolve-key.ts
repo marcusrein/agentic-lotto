@@ -43,3 +43,36 @@ export async function resolveKey(opts: ResolveOptions): Promise<Hex> {
     console.log(`[${opts.label}] Session key loaded from 1Claw`);
     return value as Hex;
 }
+
+/** Fetch a plain string secret from 1Claw (no 0x prefix requirement). */
+export async function resolveSecret(opts: ResolveOptions): Promise<string> {
+    console.log(`[${opts.label}] Fetching secret from 1Claw vault at "${opts.secretPath}"`);
+
+    const sdk = createClient({ baseUrl: opts.baseUrl });
+
+    if (opts.agentId) {
+        await sdk.auth.agentToken({
+            api_key: opts.apiKey,
+            agent_id: opts.agentId,
+        });
+    } else {
+        await sdk.auth.apiKeyToken({ api_key: opts.apiKey });
+    }
+
+    const res = await sdk.secrets.get(opts.vaultId, opts.secretPath);
+
+    if (res.error) {
+        throw new Error(
+            `[${opts.label}] Failed to fetch secret from 1Claw: ${res.error.message}. ` +
+            `Store the secret at "${opts.secretPath}" in vault ${opts.vaultId}.`
+        );
+    }
+
+    const value = res.data!.value;
+    if (!value) {
+        throw new Error(`[${opts.label}] Secret at "${opts.secretPath}" is empty.`);
+    }
+
+    console.log(`[${opts.label}] Secret loaded from 1Claw`);
+    return value;
+}

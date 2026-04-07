@@ -43,10 +43,11 @@ export function loadConfig(): LottoConfig {
     }
 
     const circle: CircleConfig = dryRun
-        ? { apiKey: "", entitySecret: "", walletId: "", walletAddress: "0x0" as Address }
+        ? { apiKey: "", entitySecret: "", entitySecretPath: "", walletId: "", walletAddress: "0x0" as Address }
         : {
             apiKey: reqEnv("CIRCLE_API_KEY"),
-            entitySecret: reqEnv("CIRCLE_ENTITY_SECRET"),
+            entitySecret: process.env.CIRCLE_ENTITY_SECRET?.trim() ?? "",
+            entitySecretPath: optEnv("CIRCLE_ENTITY_SECRET_PATH", "keys/circle-entity-secret"),
             walletId: reqEnv("CIRCLE_WALLET_ID"),
             walletAddress: reqEnv("CIRCLE_WALLET_ADDRESS") as Address,
         };

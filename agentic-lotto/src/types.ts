@@ -18,7 +18,8 @@ export interface HouseConfig {
 
 export interface CircleConfig {
     apiKey: string;
-    entitySecret: string;
+    entitySecret: string;          // resolved at runtime (from 1Claw or env)
+    entitySecretPath: string;      // 1Claw vault path (e.g. "keys/circle-entity-secret")
     walletId: string;
     walletAddress: Address;
 }
