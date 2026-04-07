@@ -1,109 +1,96 @@
-# 1Claw Examples
+# Agentic Lotto
 
-> **Reference only** — these examples are for educational and demo purposes. They are not production-ready and may contain hardcoded values, skip error handling, or use development-only configurations. Always review and adapt for your own security requirements.
+**Autonomous AI agents transacting with real money on Base — powered by [x402](https://x402.org) micropayments.**
 
-Twelve example applications demonstrating the [1Claw](https://1claw.xyz) SDK, API, and MCP server in agentic workflows. Each is self-contained with a step-by-step walkthrough you can run in 5–10 minutes.
+This repo demonstrates what happens when you combine the new [x402 payment protocol](https://x402.org) with autonomous AI agents. Three agents — each with different risk personalities — play a lottery using real USDC on Base. They buy tickets via HTTP 402 micropayments, a verifiable RNG picks the winner, and the prize pays out automatically. No human touches any transaction.
 
-## Quick reference
+x402 turns any HTTP endpoint into a paid API. An agent makes a request, gets back a `402 Payment Required` with a price, signs the payment, and retries. That's it — payments as a fetch header. This repo shows what you can build on top of that primitive.
 
-| Example                                       | Difficulty   | Time   | What you'll build                                                                          |
-| --------------------------------------------- | ------------ | ------ | ------------------------------------------------------------------------------------------ |
-| [basic](./basic/)                             | Beginner     | 5 min  | TypeScript scripts: vault CRUD, secrets, billing, signup, sharing, Intents API             |
-| [langchain-agent](./langchain-agent/)         | Beginner     | 5 min  | LangChain agent fetches secrets just-in-time (OpenAI or Gemini)                            |
-| [fastmcp-tool-server](./fastmcp-tool-server/) | Intermediate | 5 min  | Custom MCP server with domain tools (rotate keys, deploy, parse env configs)               |
-| [nextjs-agent-secret](./nextjs-agent-secret/) | Intermediate | 5 min  | AI chat app (Claude) accesses vault secrets with approval gates                            |
-| [google-a2a](./google-a2a/)                   | Intermediate | 10 min | Two agents communicate via Google A2A protocol + 1Claw vaults (includes ADK demo)          |
-| [tx-simulation](./tx-simulation/)             | Intermediate | 10 min | AI agent signs on-chain transactions with guardrails and Tenderly simulation               |
-| [shroud-demo](./shroud-demo/)                 | Intermediate | 5 min  | Shroud TEE proxy: health, agent auth, Intents API, LLM proxy (key from Vault or header)    |
-| [shroud-llm](./shroud-llm/)                   | Intermediate | 5 min  | Shroud + **LLM Token Billing**: JWT claims + **OpenAI, Anthropic, Google** via Stripe (or direct keys if billing off) |
-| [local-inspect](./local-inspect/)             | Beginner     | 2 min  | Detect prompt injection, PII, and threats — no account needed, runs offline               |
-| [shroud-security](./shroud-security/)         | Intermediate | 5 min  | Shroud threat detection: Unicode, command injection, social engineering, encoding, network |
-| [ampersend-x402](./ampersend-x402/)           | Advanced     | 10 min | x402 micropayments via Ampersend — MCP/HTTP clients, hybrid billing, paywall server        |
-| [x402-payments](./x402-payments/)             | Advanced     | 5 min  | Real x402 payments for 1Claw endpoints — EOA key in .env, GET/PUT secrets, audit, simulate |
-| [agentic-lotto](./agentic-lotto/)             | Advanced     | 15 min | Multi-agent lottery — 3 agents buy tickets via x402, SocioLogic RNG draws winner, USDC payout on Base |
+## The flagship example
 
-**Shroud LLM:** Examples that hit Shroud’s OpenAI-compatible surface (`shroud-demo`, `shroud-llm`) must send **`X-Shroud-Provider`** (e.g. `openai`, `anthropic`, `google`) on chat requests; omitting it returns **400** from Shroud.
+### [Agentic Lotto](./agentic-lotto/) — Multi-agent lottery on Base
 
-## Getting started
+Three autonomous agents buy $0.01 USDC tickets, [SocioLogic](https://rng.sociologic.ai) provides verifiable randomness (also paid via x402), and the winner receives the pot through [Circle Programmable Wallets](https://developers.circle.com/w3s/developer-controlled-wallets). All secrets live in [1Claw](https://1claw.xyz) vaults — nothing sensitive in `.env`.
 
-### Option A — Seeded demo accounts (recommended for demos)
+```
+[Degen Dave]     ──x402──►  ┌─────────────┐  ──x402──►  [SocioLogic RNG]
+[Cautious Carol] ──x402──►  │ House Server │               │
+[Mid Mike]       ──x402──►  └─────────────┘  ◄────────  winner index
+                                  │
+                                  ▼
+                         Circle Wallet payout
+                         (USDC on Base)
+```
 
-Use one org + user per example (no signup or email verification). Seed the DB once, then create vaults and credentials per demo (e.g. via the 1Claw dashboard or API) and set each example's `.env` with `ONECLAW_BASE_URL`, `ONECLAW_VAULT_ID`, `ONECLAW_API_KEY`, and `ONECLAW_AGENT_ID` for agent-based examples.
+**[Get started →](./agentic-lotto/)**
 
-**1. Seed demo accounts** (run once, via Supabase MCP or psql against your 1Claw DB):
+## All examples
 
-- Open `scripts/seed-demo-accounts.sql` and run its `INSERT` statements (e.g. in Supabase SQL Editor or via MCP). This creates 7 organizations and 7 users (`demo-basic@1claw.xyz`, `demo-langchain@1claw.xyz`, …). Shared password: `Demo1claw!seed`.
+| Example | What it does | x402 role |
+|---------|-------------|-----------|
+| **[agentic-lotto](./agentic-lotto/)** | Multi-agent lottery with real USDC payouts | Agents pay for tickets and RNG via x402 |
+| [ampersend-x402](./ampersend-x402/) | x402 paywall server + smart account client | Ampersend smart accounts sign x402 payments |
+| [x402-payments](./x402-payments/) | Pay for API calls with USDC on Base | EOA signs x402 payments for 1Claw endpoints |
+| [basic](./basic/) | 1Claw SDK fundamentals: vaults, secrets, billing | — |
+| [langchain-agent](./langchain-agent/) | LangChain agent fetches secrets just-in-time | — |
+| [fastmcp-tool-server](./fastmcp-tool-server/) | Custom MCP server with domain tools | — |
+| [nextjs-agent-secret](./nextjs-agent-secret/) | AI chat app with server-side secret handling | — |
+| [google-a2a](./google-a2a/) | Multi-agent communication via Google A2A protocol | — |
+| [tx-simulation](./tx-simulation/) | On-chain transactions with guardrails | — |
+| [local-inspect](./local-inspect/) | Detect prompt injection and PII locally | — |
+| [shroud-demo](./shroud-demo/) | Shroud TEE proxy for LLM traffic | — |
+| [shroud-llm](./shroud-llm/) | Shroud + LLM token billing via Stripe | — |
+| [shroud-security](./shroud-security/) | Shroud threat detection filters | — |
 
-**2. Per demo:** Log in as that user, create a vault (and optionally an agent and API keys), then set that example's `.env` (or `.env.local` for nextjs-agent-secret) with the vault ID and API key.
+## The x402 stack
 
-Then from any example:
+[x402](https://x402.org) is an open payment protocol that adds native payments to HTTP. When a server returns `402 Payment Required`, the client signs a USDC payment and retries with the payment proof in a header. Settlement happens on-chain (Base, Ethereum, etc.) via a facilitator.
+
+This repo shows x402 used three ways:
+
+1. **Agent-to-server payments** — Agents buy lottery tickets by paying the house server's x402 paywall
+2. **Server-to-service payments** — The house pays SocioLogic for verifiable randomness via x402
+3. **API monetization** — 1Claw endpoints accept x402 payments when over quota
+
+### How the pieces fit together
+
+| Layer | Tool | What it does |
+|-------|------|-------------|
+| Payments | [x402](https://x402.org) | HTTP-native micropayments (agents pay with a fetch header) |
+| Agent wallets | [Ampersend](https://ampersend.ai) | Smart accounts that sign x402 payments |
+| Secret management | [1Claw](https://1claw.xyz) | Session keys and secrets fetched from vault at runtime |
+| Payouts | [Circle Programmable Wallets](https://developers.circle.com/w3s/developer-controlled-wallets) | USDC transfers via REST API |
+| Randomness | [SocioLogic](https://rng.sociologic.ai) | Verifiable RNG, paid via x402 |
+| Chain | [Base](https://base.org) | L2 for USDC settlement |
+
+## Quick start
 
 ```bash
-cd examples/<name>
+# Try the lottery in dry-run mode (no real payments)
+cd agentic-lotto
 npm install
+cp .env.example .env
+# Fill in 1Claw credentials + agent addresses
+npm run start:dry
+
+# Or try x402 payments directly
+cd ampersend-x402
+npm install
+cp .env.example .env
 npm start
 ```
 
-Add `GOOGLE_API_KEY` or `OPENAI_API_KEY` for langchain-agent, `ANTHROPIC_API_KEY` for nextjs-agent-secret, and `SMART_ACCOUNT_ADDRESS` (and optional wallet key) for ampersend-x402 as needed.
+See each example's README for full setup instructions.
 
-**Test all examples:** From the repo root, run `./examples/scripts/test-all-examples.sh`. This installs deps (unless `SKIP_INSTALL=1`), runs each example’s main script or build, and reports pass/fail (12 examples). CLI-style examples are run to completion or stopped after a short delay; Next.js examples are build-only. **shroud-llm** skips unless `.env` has agent credentials; use an org with LLM Token Billing enabled for full JWT checks.
+## Learn more
 
-**Cleanup:** To delete all secrets in demo accounts (except ampersend-x402, so `keys/x402-session-key` is kept), run `./scripts/cleanup-demo-secrets.sh` from the repo root.
+- [x402 protocol spec](https://x402.org)
+- [x402 on GitHub](https://github.com/coinbase/x402)
+- [Agentic Lotto deep dive](./agentic-lotto/)
+- [1Claw docs](https://docs.1claw.xyz)
+- [Ampersend docs](https://docs.ampersend.ai)
+- [Circle Programmable Wallets](https://developers.circle.com/w3s/developer-controlled-wallets)
 
-### Option B — Manual setup
+## License
 
-Every example follows the same pattern:
-
-```bash
-# 1. Set up the example (uses published @1claw/sdk — check each example’s package.json for the range)
-cd examples/<name>
-npm install
-# If npm reports peer dependency conflicts (e.g. langchain-agent), use:
-#   npm install --legacy-peer-deps
-cp .env.example .env     # or .env.local.example → .env.local for Next.js
-# Fill in your credentials
-
-# 2. Run it
-npm start
-```
-
-## Recommended demo order
-
-If you're new to 1Claw, walk through the examples in this order:
-
-1. **[basic](./basic/)** — Learn the SDK fundamentals: auth, vaults, secrets, billing
-2. **[langchain-agent](./langchain-agent/)** — See how an LLM agent decides when to fetch secrets
-3. **[fastmcp-tool-server](./fastmcp-tool-server/)** — Build domain tools on top of the SDK
-4. **[nextjs-agent-secret](./nextjs-agent-secret/)** — Full chat app with server-side secret handling
-5. **[google-a2a](./google-a2a/)** — Multi-agent communication with vault credentials
-6. **[tx-simulation](./tx-simulation/)** — On-chain transactions with guardrails and simulation
-7. **[local-inspect](./local-inspect/)** — Detect threats in LLM output locally — no account, no network
-8. **[shroud-demo](./shroud-demo/)** — Shroud TEE proxy: health, Intents API, LLM proxy (no LLM key required if stored in Vault)
-9. **[shroud-llm](./shroud-llm/)** — Same Shroud LLM path, focused on orgs with **LLM Token Billing** (JWT claims + optional org API check)
-10. **[shroud-security](./shroud-security/)** — Shroud threat detection filters: Unicode, injection, social engineering
-11. **[ampersend-x402](./ampersend-x402/)** — Payments and billing integration
-12. **[x402-payments](./x402-payments/)** — Real x402 payments for all supported endpoints (EOA key in .env)
-
-## What you need
-
-| Credential                  | Where to get it                                                         | Which examples                                                                      |
-| --------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| 1Claw API key (`ocv_...`)   | [1claw.xyz/settings/api-keys](https://1claw.xyz/settings/api-keys)      | All except local-inspect                                                            |
-| 1Claw vault + secrets       | [1claw.xyz](https://1claw.xyz) dashboard                                | All except basic (creates its own)                                                  |
-| Gemini API key              | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) (free) | langchain, google-a2a, tx-simulation                                                |
-| Anthropic API key           | [console.anthropic.com](https://console.anthropic.com)                  | nextjs-agent-secret                                                                 |
-| OpenAI API key              | [platform.openai.com](https://platform.openai.com)                      | langchain (alternative to Gemini); shroud-demo / shroud-llm (optional if key in Vault) |
-| 1Claw agent (ID + API key)  | [1claw.xyz](https://1claw.xyz) — create agent, Shroud enabled for LLM   | shroud-demo, shroud-llm, tx-simulation                                                |
-| Smart account + session key | [Ampersend docs](https://docs.ampersend.ai)                             | ampersend-x402                                                                      |
-| EOA private key (Base USDC) | Generate hex key, fund with USDC on Base                                | x402-payments                                                                       |
-
-## About 1Claw
-
-1Claw is an HSM-backed secrets manager for AI agents and humans. It provides encrypted vaults, granular access policies, an Intents API with guardrails, human-in-the-loop approvals, subscription billing with prepaid credits, and x402 micropayments.
-
-- **SDK**: [@1claw/sdk](https://www.npmjs.com/package/@1claw/sdk)
-- **MCP**: [@1claw/mcp](https://mcp.1claw.xyz) — vault, secrets, sharing, simulate/submit transaction tools
-- **CLI**: [@1claw/cli](https://www.npmjs.com/package/@1claw/cli)
-- **Docs**: [docs.1claw.xyz](https://docs.1claw.xyz)
-- **Dashboard**: [1claw.xyz](https://1claw.xyz)
-- **Pricing**: [1claw.xyz/pricing](https://1claw.xyz/pricing)
+MIT
