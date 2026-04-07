@@ -2,9 +2,8 @@ import { initiateDeveloperControlledWalletsClient } from "@circle-fin/developer-
 import type { CircleConfig } from "./types.js";
 import type { Address } from "viem";
 
-// USDC token ID on Base mainnet — from Circle's monitored tokens registry
-// https://developers.circle.com/w3s/developer-controlled-wallets/monitored-tokens
-const USDC_BASE_TOKEN_ID = "fbd4cda4-0783-55c1-a947-7a29cf553de3";
+// USDC token ID on Base mainnet — confirmed via Circle wallet balance API
+const USDC_BASE_TOKEN_ID = "aa7bb533-aeb8-535c-bd65-354aed91ea3d";
 
 export async function payoutWinner(
     circleConfig: CircleConfig,
